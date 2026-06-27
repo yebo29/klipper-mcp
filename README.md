@@ -1,5 +1,7 @@
 # Klipper MCP Server
 
+A fork of https://github.com/Charleslotto/klipper-mcp that removes the hard-coded `biqu` user based on PRs from parent.
+
 A Model Context Protocol (MCP) server for controlling Klipper 3D printers via Moonraker API. Enables AI assistants like Claude to control your 3D printer through VS Code or any MCP-compatible client.
 
 ## Overview
@@ -186,7 +188,7 @@ This server exposes **100+ tools** for complete printer management, from basic o
 
 ```bash
 # 1. SSH into your printer
-ssh biqu@192.168.x.x  # or pi@192.168.x.x for Raspberry Pi
+ssh <user>@192.168.x.x  # or pi@192.168.x.x for Raspberry Pi
 
 # 2. Clone the repository
 cd ~
