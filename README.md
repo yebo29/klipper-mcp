@@ -1,6 +1,6 @@
 # Klipper MCP Server
 
-A fork of https://github.com/Charleslotto/klipper-mcp that removes the hard-coded `biqu` user based on PRs from parent.
+A fork of <https://github.com/Charleslotto/klipper-mcp> that removes the hard-coded `biqu` user based on PRs from parent.
 
 A Model Context Protocol (MCP) server for controlling Klipper 3D printers via Moonraker API. Enables AI assistants like Claude to control your 3D printer through VS Code or any MCP-compatible client.
 
@@ -11,8 +11,9 @@ This server exposes **100+ tools** for complete printer management, from basic o
 ## Features
 
 ### 🖨️ Core Printer Control
+
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `get_printer_status` | Full status including temps, position, state |
 | `run_gcode` | Execute any G-code command |
 | `start_print` | Start a print job |
@@ -25,8 +26,9 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `set_heater_temperature` | Set hotend/bed temps |
 
 ### 🔧 StealthChanger / Toolchanger Support
+
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `get_active_tool` | Current tool status |
 | `select_tool` | Pick up tool (T0-T5) |
 | `drop_tool` | Return tool to dock |
@@ -37,8 +39,9 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `disable_crash_detection` | Disable during testing |
 
 ### ⚡ TMC Stepper Driver Control
+
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `get_tmc_status` | Driver status, currents, temps |
 | `set_tmc_current` | Adjust run/hold current |
 | `dump_tmc_registers` | Register diagnostics |
@@ -47,8 +50,9 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `list_tmc_steppers` | All TMC-equipped steppers |
 
 ### 💡 LED Effects (klipper-led_effect)
+
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `list_led_effects` | Available effects |
 | `set_led_effect` | Activate an effect |
 | `stop_led_effect` / `stop_all_effects` | Stop effects |
@@ -57,8 +61,9 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `activate_led_scene` | Apply scene preset |
 
 ### 📁 File Operations
+
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `list_gcode_files` | Browse G-code files |
 | `get_file_metadata` | Slicer settings, thumbnails |
 | `read_gcode_file` | Read file contents |
@@ -69,8 +74,9 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `read_config_file` | Read printer.cfg etc. |
 
 ### 📷 Camera & Timelapse
+
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `get_camera_snapshot` | Capture current frame |
 | `get_camera_stream_url` | MJPEG stream URL |
 | `get_timelapse_settings` | Current timelapse config |
@@ -80,8 +86,9 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `configure_timelapse` | Adjust settings |
 
 ### 📊 Print Statistics
+
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `get_print_history` | Past prints with filtering |
 | `get_print_stats` | Cumulative statistics |
 | `get_filament_usage_by_material` | Usage breakdown |
@@ -90,8 +97,9 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `export_printer_data` | Export all data to JSON |
 
 ### 🔍 Diagnostics & Troubleshooting
+
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `parse_klippy_log` | Analyze log for issues |
 | `get_recent_errors` | Recent errors with context |
 | `get_log_summary` | Log overview |
@@ -104,8 +112,9 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `get_system_performance` | CPU, memory, disk stats |
 
 ### 🌡️ Temperature & Bed Mesh
+
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `get_temperatures` | All heater temperatures |
 | `get_temperature_history` | Historical temp data |
 | `analyze_temperature_data` | Anomaly detection |
@@ -117,8 +126,9 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `clear_bed_mesh` | Remove active mesh |
 
 ### 🧵 Spoolman Integration
+
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `list_spools` | All tracked spools |
 | `get_active_spool` | Currently loaded spool |
 | `set_active_spool` | Set spool for tool |
@@ -129,8 +139,9 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `list_filaments` | Filament database |
 
 ### 🔔 Notifications
+
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `send_notification` | Multi-channel notify |
 | `send_discord_notification` | Discord webhook |
 | `send_slack_notification` | Slack webhook |
@@ -140,8 +151,9 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `get_notification_settings` | Current config |
 
 ### 💾 Backup & Maintenance
+
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `backup_config` | Backup all configs |
 | `list_backups` | Available backups |
 | `restore_config` | Restore from backup |
@@ -152,8 +164,9 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `export_printer_data` | Full data export |
 
 ### 📝 G-code Analysis
+
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `analyze_gcode_file` | Full file analysis |
 | `validate_gcode` | Check for issues |
 | `extract_gcode_comments` | Slicer comments |
@@ -162,8 +175,9 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `compare_gcode_files` | Diff two files |
 
 ### 🖥️ System Management
+
 | Tool | Description |
-|------|-------------|
+| ------ | ------------- |
 | `get_system_info` | CPU, memory, disk, temp |
 | `get_network_info` | IP addresses, WiFi |
 | `check_updates` | Available updates |
@@ -179,6 +193,7 @@ This server exposes **100+ tools** for complete printer management, from basic o
 ## Installation
 
 ### Prerequisites
+
 - Klipper + Moonraker running on your printer
 - Python 3.9+ on your CB1/Raspberry Pi
 - Network access between VS Code and printer
@@ -211,6 +226,20 @@ sudo systemctl start klipper-mcp
 sudo systemctl enable klipper-mcp  # Auto-start on boot
 ```
 
+Add to Moonraker's `update_manager` config to auto-update MCP:
+
+```ini
+[update_manager klipper-mcp]
+type: git_repo
+path: ~/klipper-mcp
+origin: https://github.com/Charleslotto/klipper-mcp.git
+primary_branch: main
+managed_services: klipper-mcp
+requirements: requirements.txt
+env: ~/klipper-mcp/venv/bin/python
+install_script: install.sh
+```
+
 ### Verify Installation
 
 ```bash
@@ -233,21 +262,24 @@ nano ~/klipper-mcp/config.py
 ```
 
 **Required settings:**
+
 | Setting | Description | Example |
-|---------|-------------|---------|
+| --------- | ------------- | --------- |
 | `API_KEY` | Secure authentication key | `python3 -c "import secrets; print(secrets.token_urlsafe(32))"` |
 | `MOONRAKER_URL` | Your Moonraker address | `http://localhost:7125` |
 | `PRINTER_NAME` | Display name | `Voron 2.4` |
 
 **Security settings:**
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `ARMED` | Enable dangerous operations | `false` |
-| `ADMIN_PIN` | PIN for destructive ops | `123456` |
+
+| Setting     | Description                 | Default  |
+|-------------|-----------------------------|----------|
+| `ARMED`     | Enable dangerous operations | `false`  |
+| `ADMIN_PIN` | PIN for destructive ops     | `123456` |
 
 **Optional integrations:**
+
 | Setting | Description |
-|---------|-------------|
+| --------- | ------------- |
 | `SPOOLMAN_ENABLED` | Enable Spoolman filament tracking |
 | `TOOL_COUNT` | Number of toolchanger tools |
 | `DISCORD_WEBHOOK_URL` | Discord notifications |
@@ -325,6 +357,7 @@ Configure multiple printers in settings.json:
 4. Claude should respond with your printer's status
 
 **Troubleshooting:**
+
 - Ensure the CB1/Pi IP address is reachable: `ping 192.168.x.x`
 - Check firewall allows port 8000: `sudo ufw allow 8000`
 - Verify API key matches exactly in VS Code and config.py
@@ -335,15 +368,19 @@ Configure multiple printers in settings.json:
 ## Security
 
 ### ARMED Flag
+
 Dangerous operations (G-code execution, temperature changes) require `ARMED=True` in config.
 
 ### Admin PIN
+
 Destructive operations (file deletion, config restore, system reboot) require the admin PIN.
 
 ### API Key
+
 All requests must include a valid `X-API-Key` header matching your config.
 
 ### Audit Log
+
 All operations are logged to `data/audit.log` for security review.
 
 ## Configuration Reference
@@ -399,7 +436,8 @@ TOOL_COUNT = 4  # Number of tools (T0-T3)
 ## Usage Examples
 
 ### Basic Commands
-```
+
+```text
 "What's my printer's current status?"
 "Set the bed to 60°C and hotend to 210°C"
 "Start printing benchy.gcode"
@@ -415,6 +453,7 @@ TOOL_COUNT = 4  # Number of tools (T0-T3)
 **Claude:** I'll fetch the external filament database and import everything for you...
 
 **Result:**
+
 - Fetched 6,957 filaments from SpoolmanDB community database
 - Created 53 vendors (Polymaker, eSun, Bambu Lab, Prusament, Hatchbox, etc.)
 - Imported 5,223 filaments with full specifications:
@@ -430,7 +469,7 @@ TOOL_COUNT = 4  # Number of tools (T0-T3)
 
 **Claude:** Let me check the system status...
 
-```
+```text
 ┌──────────────────────────────────────┐
 │ System Load After Spoolman Import    │
 ├─────────────┬────────────┬───────────┤
@@ -453,7 +492,8 @@ TOOL_COUNT = 4  # Number of tools (T0-T3)
 **Claude:** I'll analyze your printer configuration and logs...
 
 **Results:**
-```
+
+```text
 Configuration Issues Found:
 ⚠️  Klipper git state: dirty/invalid - uncommitted changes
 ⚠️  TMC Autotune: Installed but not configured for all steppers
@@ -477,7 +517,7 @@ TMC Drivers: No errors, all steppers responding
 
 **Claude:** Analyzing temperature history...
 
-```
+```text
 Temperature Analysis (Last 24 Hours)
 ────────────────────────────────────
 Hotend (extruder):
@@ -503,7 +543,7 @@ MCU Temperatures:
 
 **Claude:** Let me check your TMC configuration...
 
-```
+```text
 TMC Driver Status
 ─────────────────────────────────────────────────
 Stepper      │ Driver   │ Run    │ Hold   │ Temp
@@ -528,7 +568,7 @@ Recommendation: Add motor specs to enable automatic tuning
 
 **Claude:** Here's your printing summary...
 
-```
+```text
 Lifetime Statistics
 ───────────────────
 Total Prints:     847
@@ -559,7 +599,7 @@ Recent Prints (Last 7 Days)
 
 **Claude:** Let me configure your toolchanger...
 
-```
+```text
 Current Tool Status
 ───────────────────
 T0 (extruder):  🔵 Active - Docked
@@ -583,7 +623,7 @@ Ready to print! The slicer should handle tool changes automatically.
 
 **Claude:** I'll create a backup and then check for updates...
 
-```
+```text
 Backup Created
 ──────────────
 📁 backup_2026-01-26_143022.tar.gz
@@ -607,7 +647,9 @@ Would you like me to proceed with updating Klipper?
 ## Optional Integrations
 
 ### Spoolman
+
 Enable filament tracking by setting up [Spoolman](https://github.com/Donkie/Spoolman):
+
 ```bash
 cd ~/klipper-mcp/scripts
 chmod +x install_spoolman.sh
@@ -615,20 +657,24 @@ chmod +x install_spoolman.sh
 ```
 
 Then update `config.py`:
+
 ```python
 SPOOLMAN_ENABLED = True
 SPOOLMAN_URL = "http://localhost:7912"
 ```
 
 ### TMC Autotune
+
 For automatic TMC tuning, install [klipper_tmc_autotune](https://github.com/andrewmcgr/klipper_tmc_autotune).
 
 ### LED Effects
+
 For animated LEDs, install [klipper-led_effect](https://github.com/julianschill/klipper-led_effect).
 
 ## Troubleshooting
 
 ### Server won't start
+
 ```bash
 # Check Moonraker is running
 systemctl status moonraker
@@ -641,24 +687,27 @@ python3 -c "import config; print(config.MOONRAKER_URL)"
 ```
 
 ### Can't connect from VS Code
+
 - Verify CB1/Pi IP address is correct
 - Check firewall allows port 8000: `sudo ufw allow 8000`
 - Verify API key matches in VS Code and config.py
 - Test: `curl -H "X-API-Key: your-key" http://ip:8000/health`
 
 ### Operations failing
+
 - Check `ARMED=True` for dangerous operations
 - Verify Klipper is running and ready: `systemctl status klipper`
 - Check klippy.log: `tail -f ~/printer_data/logs/klippy.log`
 
 ### Spoolman not working
+
 - Verify Spoolman is running: `systemctl status spoolman`
 - Check URL in config.py matches Spoolman's address
 - Test: `curl http://localhost:7912/api/v1/health`
 
 ## Project Structure
 
-```
+```text
 klipper-mcp/
 ├── server.py           # Main MCP server
 ├── moonraker.py        # Moonraker API client
@@ -693,6 +742,7 @@ klipper-mcp/
 ## Contributing
 
 Contributions welcome! Please:
+
 1. Fork the repository
 2. Create a feature branch
 3. Add tests if applicable

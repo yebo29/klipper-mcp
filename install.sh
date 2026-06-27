@@ -18,6 +18,8 @@ INSTALL_DIR="${KLIPPER_MCP_DIR:-$HOME/klipper-mcp}"
 VENV_DIR="$INSTALL_DIR/venv"
 SERVICE_NAME="klipper-mcp"
 CURRENT_USER="$(whoami)"
+USER_HOME="$(getent passwd "$CURRENT_USER" | cut -d: -f6)"
+PRINTER_DATA_DIR="${PRINTER_DATA_DIR:-$USER_HOME/printer_data}"
 
 echo "Installing as user: $CURRENT_USER"
 echo "Install directory: $INSTALL_DIR"
@@ -91,6 +93,9 @@ sudo systemctl enable "$SERVICE_NAME"
 # Create log file
 sudo touch /var/log/klipper-mcp.log
 sudo chown "$CURRENT_USER:$CURRENT_USER" /var/log/klipper-mcp.log
+
+# Add service to moonraker.asvc
+grep -qxF 'klipper-mcp' "$PRINTER_DATA_DIR/moonraker.asvc" || echo 'klipper-mcp' >> "$PRINTER_DATA_DIR/moonraker.asvc"
 
 echo ""
 echo "=========================================="
