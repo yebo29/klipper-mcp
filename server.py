@@ -3,6 +3,7 @@ Klipper MCP Server - Main Entry Point
 Compatible with Python 3.9+ (CB1/Raspberry Pi)
 Run with: python server.py
 """
+
 import asyncio
 import inspect
 import json
@@ -17,10 +18,10 @@ import html
 import config
 from moonraker import init_client, close_client, get_client
 
-
 # ============================================================
 # HTML Rendering Utilities (for fetch_webpage compatibility)
 # ============================================================
+
 
 def escape(text: Any) -> str:
     """HTML escape any value."""
@@ -33,12 +34,14 @@ def render_json_as_html(data: Any, title: str = "MCP Response", depth: int = 0) 
         items = []
         for key, value in data.items():
             rendered_value = render_json_value(value, depth + 1)
-            items.append(f'<dt><strong>{escape(key)}</strong></dt><dd>{rendered_value}</dd>')
+            items.append(
+                f"<dt><strong>{escape(key)}</strong></dt><dd>{rendered_value}</dd>"
+            )
         return f'<dl style="margin-left:{depth*20}px;">{"".join(items)}</dl>'
     elif isinstance(data, list):
         if not data:
-            return '<em>(empty list)</em>'
-        items = [f'<li>{render_json_value(item, depth + 1)}</li>' for item in data]
+            return "<em>(empty list)</em>"
+        items = [f"<li>{render_json_value(item, depth + 1)}</li>" for item in data]
         return f'<ul style="margin-left:{depth*20}px;">{"".join(items)}</ul>'
     else:
         return escape(data)
@@ -47,12 +50,12 @@ def render_json_as_html(data: Any, title: str = "MCP Response", depth: int = 0) 
 def render_json_value(value: Any, depth: int = 0) -> str:
     """Render a single JSON value as HTML."""
     if value is None:
-        return '<em>null</em>'
+        return "<em>null</em>"
     elif isinstance(value, bool):
         color = "green" if value else "red"
         return f'<span style="color:{color};">{str(value).lower()}</span>'
     elif isinstance(value, (int, float)):
-        return f'<code>{value}</code>'
+        return f"<code>{value}</code>"
     elif isinstance(value, str):
         return escape(value)
     elif isinstance(value, (dict, list)):
@@ -63,8 +66,8 @@ def render_json_value(value: Any, depth: int = 0) -> str:
 
 def html_page(title: str, body: str, subtitle: str = None) -> str:
     """Wrap content in a complete HTML page with styling."""
-    subtitle_html = f'<p style="color:#666;">{escape(subtitle)}</p>' if subtitle else ''
-    return f'''<!DOCTYPE html>
+    subtitle_html = f'<p style="color:#666;">{escape(subtitle)}</p>' if subtitle else ""
+    return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -116,26 +119,31 @@ def html_page(title: str, body: str, subtitle: str = None) -> str:
         <p>Klipper MCP Server v1.0.0 | Printer: {escape(config.PRINTER_NAME)}</p>
     </footer>
 </body>
-</html>'''
+</html>"""
 
 
 def error_html(title: str, error: str) -> str:
     """Render an error page."""
-    return html_page(title, f'''
+    return html_page(
+        title,
+        f"""
         <section>
             <h2 class="status-error">Error</h2>
             <p>{escape(error)}</p>
         </section>
-    ''')
+    """,
+    )
+
 
 # Tool registry
 TOOLS: Dict[str, Dict[str, Any]] = {}
+
 
 def get_tool_description(tool_info):
     """Extract the first meaningful line from a tool's docstring."""
     doc = tool_info.get("description", "") or ""
     # Strip leading/trailing whitespace and split by lines
-    lines = doc.strip().split('\n')
+    lines = doc.strip().split("\n")
     # Find the first non-empty line
     for line in lines:
         stripped = line.strip()
@@ -144,21 +152,20 @@ def get_tool_description(tool_info):
     return "No description available"
 
 
-
 def audit_log(action: str, details: dict = None):
     """Write to audit log for security tracking."""
-    log_path = getattr(config, 'AUDIT_LOG_FILE', '/home/biqu/klipper-mcp/data/audit.log')
+    log_path = config.AUDIT_LOG_FILE
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
-    
+
     entry = {
         "timestamp": datetime.now().isoformat(),
         "action": action,
-        "details": details or {}
+        "details": details or {},
     }
-    
+
     try:
-        with open(log_path, 'a') as f:
-            f.write(json.dumps(entry) + '\n')
+        with open(log_path, "a") as f:
+            f.write(json.dumps(entry) + "\n")
     except Exception as e:
         print(f"Failed to write audit log: {e}", file=sys.stderr)
 
@@ -167,10 +174,11 @@ def audit_log(action: str, details: dict = None):
 # Import and register all tools from tool modules
 # ============================================================
 
+
 def register_all_tools():
     """Import and register all tool modules."""
     from tools import register_all_tools as _register
-    
+
     # Create a mock MCP object that captures tool registrations
     class MockMCP:
         def tool(self):
@@ -179,14 +187,15 @@ def register_all_tools():
                 TOOLS[tool_name] = {
                     "function": func,
                     "description": func.__doc__ or "",
-                    "name": tool_name
+                    "name": tool_name,
                 }
                 return func
+
             return decorator
-    
+
     mock_mcp = MockMCP()
     _register(mock_mcp)
-    
+
     print(f"✓ Registered {len(TOOLS)} tools", file=sys.stderr)
 
 
@@ -194,19 +203,16 @@ def register_all_tools():
 # HTTP API Handlers
 # ============================================================
 
+
 async def handle_list_tools(request: web.Request) -> web.Response:
     """List all available tools."""
     tools_list = []
     for name, tool_info in TOOLS.items():
-        tools_list.append({
-            "name": name,
-            "description": get_tool_description(tool_info)
-        })
-    
-    return web.json_response({
-        "tools": tools_list,
-        "count": len(tools_list)
-    })
+        tools_list.append(
+            {"name": name, "description": get_tool_description(tool_info)}
+        )
+
+    return web.json_response({"tools": tools_list, "count": len(tools_list)})
 
 
 async def handle_call_tool(request: web.Request) -> web.Response:
@@ -215,67 +221,70 @@ async def handle_call_tool(request: web.Request) -> web.Response:
         data = await request.json()
     except json.JSONDecodeError:
         return web.json_response({"error": "Invalid JSON"}, status=400)
-    
+
     tool_name = data.get("tool") or data.get("name")
     arguments = data.get("arguments", {}) or data.get("params", {})
-    
+
     if not tool_name:
         return web.json_response({"error": "Missing 'tool' field"}, status=400)
-    
+
     if tool_name not in TOOLS:
-        return web.json_response({
-            "error": f"Unknown tool: {tool_name}",
-            "available_tools": list(TOOLS.keys())
-        }, status=404)
-    
+        return web.json_response(
+            {
+                "error": f"Unknown tool: {tool_name}",
+                "available_tools": list(TOOLS.keys()),
+            },
+            status=404,
+        )
+
     tool_info = TOOLS[tool_name]
     func = tool_info["function"]
-    
+
     # Log the call
     audit_log("tool_call", {"tool": tool_name, "arguments": arguments})
-    
+
     try:
         # Call the tool function
         if asyncio.iscoroutinefunction(func):
             result = await func(**arguments)
         else:
             result = func(**arguments)
-        
-        return web.json_response({
-            "tool": tool_name,
-            "result": json.loads(result) if isinstance(result, str) else result
-        })
-    
+
+        return web.json_response(
+            {
+                "tool": tool_name,
+                "result": json.loads(result) if isinstance(result, str) else result,
+            }
+        )
+
     except TypeError as e:
-        return web.json_response({
-            "error": f"Invalid arguments: {str(e)}",
-            "tool": tool_name
-        }, status=400)
-    
+        return web.json_response(
+            {"error": f"Invalid arguments: {str(e)}", "tool": tool_name}, status=400
+        )
+
     except Exception as e:
         traceback.print_exc()
-        return web.json_response({
-            "error": str(e),
-            "tool": tool_name
-        }, status=500)
+        return web.json_response({"error": str(e), "tool": tool_name}, status=500)
 
 
 async def handle_server_info(request: web.Request) -> web.Response:
     """Get server information."""
-    return web.json_response({
-        "name": "klipper-mcp",
-        "version": "1.0.0",
-        "printer": config.PRINTER_NAME,
-        "moonraker_url": config.MOONRAKER_URL,
-        "armed": config.ARMED,
-        "tools_count": len(TOOLS),
-        "features": {
-            "stealthchanger": True,
-            "led_effects": True,
-            "spoolman": config.SPOOLMAN_ENABLED,
-            "tts": config.TTS_ENABLED,
+    return web.json_response(
+        {
+            "name": "klipper-mcp",
+            "version": "1.0.0",
+            "printer": config.PRINTER_NAME,
+            "moonraker_url": config.MOONRAKER_URL,
+            "armed": config.ARMED,
+            "tools_count": len(TOOLS),
+            "features": {
+                "stealthchanger": True,
+                "led_effects": True,
+                "spoolman": config.SPOOLMAN_ENABLED,
+                "tts": config.TTS_ENABLED,
+            },
         }
-    })
+    )
 
 
 async def handle_printer_status(request: web.Request) -> web.Response:
@@ -283,30 +292,32 @@ async def handle_printer_status(request: web.Request) -> web.Response:
     try:
         client = get_client()
         result = await client.get_printer_status()
-        
+
         if "error" in result:
             return web.json_response({"error": result["error"]}, status=500)
-        
+
         status = result.get("result", {}).get("status", {})
         print_stats = status.get("print_stats", {})
         extruder = status.get("extruder", {})
         bed = status.get("heater_bed", {})
-        
-        return web.json_response({
-            "state": print_stats.get("state"),
-            "filename": print_stats.get("filename"),
-            "progress": print_stats.get("progress", 0),
-            "temperatures": {
-                "extruder": {
-                    "current": extruder.get("temperature"),
-                    "target": extruder.get("target")
+
+        return web.json_response(
+            {
+                "state": print_stats.get("state"),
+                "filename": print_stats.get("filename"),
+                "progress": print_stats.get("progress", 0),
+                "temperatures": {
+                    "extruder": {
+                        "current": extruder.get("temperature"),
+                        "target": extruder.get("target"),
+                    },
+                    "bed": {
+                        "current": bed.get("temperature"),
+                        "target": bed.get("target"),
+                    },
                 },
-                "bed": {
-                    "current": bed.get("temperature"),
-                    "target": bed.get("target")
-                }
             }
-        })
+        )
     except Exception as e:
         return web.json_response({"error": str(e)}, status=500)
 
@@ -319,21 +330,24 @@ async def handle_health(request: web.Request) -> web.Response:
         moonraker_ok = "error" not in result
     except:
         moonraker_ok = False
-    
-    return web.json_response({
-        "status": "ok" if moonraker_ok else "degraded",
-        "moonraker_connected": moonraker_ok,
-        "timestamp": datetime.now().isoformat()
-    })
+
+    return web.json_response(
+        {
+            "status": "ok" if moonraker_ok else "degraded",
+            "moonraker_connected": moonraker_ok,
+            "timestamp": datetime.now().isoformat(),
+        }
+    )
 
 
 # ============================================================
 # HTML Endpoint Handlers (for fetch_webpage compatibility)
 # ============================================================
 
+
 async def handle_server_info_html(request: web.Request) -> web.Response:
     """Server info in HTML format."""
-    body = f'''
+    body = f"""
     <section>
         <h2>Server Information</h2>
         <dl>
@@ -364,9 +378,13 @@ async def handle_server_info_html(request: web.Request) -> web.Response:
             <li><a href="/config.html">Configuration Files</a></li>
         </ul>
     </section>
-    '''
-    return web.Response(text=html_page("Klipper MCP Server", body, f"Controlling {config.PRINTER_NAME}"), 
-                       content_type='text/html')
+    """
+    return web.Response(
+        text=html_page(
+            "Klipper MCP Server", body, f"Controlling {config.PRINTER_NAME}"
+        ),
+        content_type="text/html",
+    )
 
 
 async def handle_printer_status_html(request: web.Request) -> web.Response:
@@ -374,11 +392,14 @@ async def handle_printer_status_html(request: web.Request) -> web.Response:
     try:
         client = get_client()
         result = await client.get_printer_status()
-        
+
         if "error" in result:
-            return web.Response(text=error_html("Printer Status", result["error"]), 
-                               content_type='text/html', status=500)
-        
+            return web.Response(
+                text=error_html("Printer Status", result["error"]),
+                content_type="text/html",
+                status=500,
+            )
+
         status = result.get("result", {}).get("status", {})
         print_stats = status.get("print_stats", {})
         extruder = status.get("extruder", {})
@@ -386,13 +407,17 @@ async def handle_printer_status_html(request: web.Request) -> web.Response:
         extruder2 = status.get("extruder2", {})
         bed = status.get("heater_bed", {})
         toolhead = status.get("toolhead", {})
-        
+
         state = print_stats.get("state", "unknown")
-        state_class = "status-ok" if state in ["standby", "printing", "complete"] else "status-error" if state == "error" else ""
-        
+        state_class = (
+            "status-ok"
+            if state in ["standby", "printing", "complete"]
+            else "status-error" if state == "error" else ""
+        )
+
         progress = print_stats.get("progress", 0) or 0
-        
-        body = f'''
+
+        body = f"""
         <section>
             <h2>Print State</h2>
             <dl>
@@ -446,13 +471,18 @@ async def handle_printer_status_html(request: web.Request) -> web.Response:
                 <dt>Max Accel</dt><dd>{toolhead.get("max_accel", 0)} mm/s²</dd>
             </dl>
         </section>
-        '''
-        
-        return web.Response(text=html_page("Printer Status", body, f"{config.PRINTER_NAME}"), 
-                           content_type='text/html')
+        """
+
+        return web.Response(
+            text=html_page("Printer Status", body, f"{config.PRINTER_NAME}"),
+            content_type="text/html",
+        )
     except Exception as e:
-        return web.Response(text=error_html("Printer Status", str(e)), 
-                           content_type='text/html', status=500)
+        return web.Response(
+            text=error_html("Printer Status", str(e)),
+            content_type="text/html",
+            status=500,
+        )
 
 
 async def handle_list_tools_html(request: web.Request) -> web.Response:
@@ -467,7 +497,10 @@ async def handle_list_tools_html(request: web.Request) -> web.Response:
             cat = "Configuration"
         elif name.startswith("list_"):
             cat = "Listing"
-        elif any(name.startswith(p) for p in ["start_", "stop_", "pause_", "resume_", "cancel_"]):
+        elif any(
+            name.startswith(p)
+            for p in ["start_", "stop_", "pause_", "resume_", "cancel_"]
+        ):
             cat = "Control"
         elif any(x in name for x in ["tool", "pickup", "dropoff"]):
             cat = "Toolchanger"
@@ -491,35 +524,37 @@ async def handle_list_tools_html(request: web.Request) -> web.Response:
             cat = "Diagnostics"
         else:
             cat = "Other"
-        
+
         if cat not in categories:
             categories[cat] = []
         categories[cat].append((name, tool_info))
-    
-    body = f'<section><h2>Total Tools: {len(TOOLS)}</h2></section>'
-    
+
+    body = f"<section><h2>Total Tools: {len(TOOLS)}</h2></section>"
+
     for cat in sorted(categories.keys()):
         tools = categories[cat]
         tools_html = ""
         for name, tool_info in tools:
             desc = get_tool_description(tool_info)
-            tools_html += f'''
+            tools_html += f"""
             <div class="tool-card">
                 <span class="tool-name">{escape(name)}</span>
                 <p style="margin:5px 0 0 0; color:#666;">{escape(desc)}</p>
                 <small><a href="/call/{name}.html">Try it →</a></small>
             </div>
-            '''
-        
-        body += f'''
+            """
+
+        body += f"""
         <section>
             <h2>{escape(cat)} ({len(tools)})</h2>
             {tools_html}
         </section>
-        '''
-    
-    return web.Response(text=html_page("Available Tools", body, f"{len(TOOLS)} tools registered"), 
-                       content_type='text/html')
+        """
+
+    return web.Response(
+        text=html_page("Available Tools", body, f"{len(TOOLS)} tools registered"),
+        content_type="text/html",
+    )
 
 
 async def handle_health_html(request: web.Request) -> web.Response:
@@ -533,11 +568,11 @@ async def handle_health_html(request: web.Request) -> web.Response:
         error_msg = str(e)
     else:
         error_msg = None
-    
+
     status_class = "status-ok" if moonraker_ok else "status-error"
     status_text = "OK" if moonraker_ok else "DEGRADED"
-    
-    body = f'''
+
+    body = f"""
     <section>
         <h2>System Health</h2>
         <dl>
@@ -552,39 +587,43 @@ async def handle_health_html(request: web.Request) -> web.Response:
         </dl>
         {f'<p class="status-error">Error: {escape(error_msg)}</p>' if error_msg else ''}
     </section>
-    '''
-    
-    return web.Response(text=html_page("Health Check", body), content_type='text/html')
+    """
+
+    return web.Response(text=html_page("Health Check", body), content_type="text/html")
 
 
 async def handle_call_tool_html(request: web.Request) -> web.Response:
     """Call a tool and return HTML result."""
-    tool_name = request.match_info.get('tool_name', '').replace('.html', '')
-    
+    tool_name = request.match_info.get("tool_name", "").replace(".html", "")
+
     if not tool_name:
-        return web.Response(text=error_html("Tool Call", "No tool specified"), 
-                           content_type='text/html', status=400)
-    
+        return web.Response(
+            text=error_html("Tool Call", "No tool specified"),
+            content_type="text/html",
+            status=400,
+        )
+
     if tool_name not in TOOLS:
-        body = f'''
+        body = f"""
         <section>
             <h2 class="status-error">Unknown Tool: {escape(tool_name)}</h2>
             <p>This tool does not exist. <a href="/tools.html">View available tools</a></p>
         </section>
-        '''
-        return web.Response(text=html_page("Tool Not Found", body), 
-                           content_type='text/html', status=404)
-    
+        """
+        return web.Response(
+            text=html_page("Tool Not Found", body), content_type="text/html", status=404
+        )
+
     tool_info = TOOLS[tool_name]
     func = tool_info["function"]
-    
+
     # Get arguments from query string
     arguments = dict(request.query)
-    
+
     # If no arguments provided, show a form
-    if not arguments and request.method == 'GET':
+    if not arguments and request.method == "GET":
         desc = tool_info["description"] or "No description available."
-        body = f'''
+        body = f"""
         <section>
             <h2>Tool: {escape(tool_name)}</h2>
             <p>{escape(desc)}</p>
@@ -596,31 +635,33 @@ async def handle_call_tool_html(request: web.Request) -> web.Response:
             </form>
             <p style="margin-top:20px;"><small>Example: <code>/call/{escape(tool_name)}.html?param1=value1&param2=value2</code></small></p>
         </section>
-        '''
-        return web.Response(text=html_page(f"Tool: {tool_name}", body), content_type='text/html')
-    
+        """
+        return web.Response(
+            text=html_page(f"Tool: {tool_name}", body), content_type="text/html"
+        )
+
     audit_log("tool_call_html", {"tool": tool_name, "arguments": arguments})
-    
+
     try:
         if asyncio.iscoroutinefunction(func):
             result = await func(**arguments)
         else:
             result = func(**arguments)
-        
+
         # Parse JSON if string
         if isinstance(result, str):
             try:
                 result = json.loads(result)
             except:
                 pass
-        
+
         # Render result
         if isinstance(result, (dict, list)):
             result_html = render_json_as_html(result)
         else:
-            result_html = f'<pre>{escape(str(result))}</pre>'
-        
-        body = f'''
+            result_html = f"<pre>{escape(str(result))}</pre>"
+
+        body = f"""
         <section>
             <h2>Tool: {escape(tool_name)}</h2>
             <p><strong>Arguments:</strong> {escape(json.dumps(arguments)) if arguments else "<em>None</em>"}</p>
@@ -633,82 +674,99 @@ async def handle_call_tool_html(request: web.Request) -> web.Response:
             <h3>Raw JSON</h3>
             <pre>{escape(json.dumps(result, indent=2) if isinstance(result, (dict, list)) else str(result))}</pre>
         </section>
-        '''
-        
-        return web.Response(text=html_page(f"Result: {tool_name}", body), content_type='text/html')
-    
+        """
+
+        return web.Response(
+            text=html_page(f"Result: {tool_name}", body), content_type="text/html"
+        )
+
     except TypeError as e:
-        return web.Response(text=error_html(f"Tool: {tool_name}", f"Invalid arguments: {e}"), 
-                           content_type='text/html', status=400)
+        return web.Response(
+            text=error_html(f"Tool: {tool_name}", f"Invalid arguments: {e}"),
+            content_type="text/html",
+            status=400,
+        )
     except Exception as e:
         traceback.print_exc()
-        return web.Response(text=error_html(f"Tool: {tool_name}", str(e)), 
-                           content_type='text/html', status=500)
+        return web.Response(
+            text=error_html(f"Tool: {tool_name}", str(e)),
+            content_type="text/html",
+            status=500,
+        )
 
 
 async def handle_input_shaper_html(request: web.Request) -> web.Response:
     """Display input shaper settings for all toolheads."""
     import re
-    
+
     try:
         client = get_client()
-        
+
         # Query current active input_shaper settings from Klipper
-        result = await client.query_printer_objects({
-            "input_shaper": None  # Get all attributes
-        })
-        
+        result = await client.query_printer_objects(
+            {"input_shaper": None}  # Get all attributes
+        )
+
         active_shaper = {}
         if "result" in result:
             status = result.get("result", {}).get("status", {})
             active_shaper = status.get("input_shaper", {})
-        
+
         # Read per-tool input shaper params from config files
         tool_shapers = []
         for i in range(config.TOOL_COUNT):
             tool_name = config.TOOL_NAMES.get(i, f"T{i}")
             filepath = f"Toolheads/T{i}.cfg"
-            
+
             try:
                 session = await client._get_session()
                 url = f"{client.base_url}/server/files/config/{filepath}"
-                
+
                 async with session.get(url) as response:
                     if response.status == 200:
                         content = await response.text()
-                        
+
                         # Parse input shaper params from config
-                        freq_x = re.search(r'params_input_shaper_freq_x:\s*([\d.]+)', content)
-                        freq_y = re.search(r'params_input_shaper_freq_y:\s*([\d.]+)', content)
-                        type_x = re.search(r'params_input_shaper_type_x:\s*(\w+)', content)
-                        type_y = re.search(r'params_input_shaper_type_y:\s*(\w+)', content)
-                        
-                        tool_shapers.append({
-                            "tool": tool_name,
-                            "freq_x": float(freq_x.group(1)) if freq_x else None,
-                            "freq_y": float(freq_y.group(1)) if freq_y else None,
-                            "type_x": type_x.group(1) if type_x else "mzv",
-                            "type_y": type_y.group(1) if type_y else "mzv",
-                        })
+                        freq_x = re.search(
+                            r"params_input_shaper_freq_x:\s*([\d.]+)", content
+                        )
+                        freq_y = re.search(
+                            r"params_input_shaper_freq_y:\s*([\d.]+)", content
+                        )
+                        type_x = re.search(
+                            r"params_input_shaper_type_x:\s*(\w+)", content
+                        )
+                        type_y = re.search(
+                            r"params_input_shaper_type_y:\s*(\w+)", content
+                        )
+
+                        tool_shapers.append(
+                            {
+                                "tool": tool_name,
+                                "freq_x": float(freq_x.group(1)) if freq_x else None,
+                                "freq_y": float(freq_y.group(1)) if freq_y else None,
+                                "type_x": type_x.group(1) if type_x else "mzv",
+                                "type_y": type_y.group(1) if type_y else "mzv",
+                            }
+                        )
                     else:
-                        tool_shapers.append({
-                            "tool": tool_name,
-                            "error": f"Config file not found: {filepath}"
-                        })
+                        tool_shapers.append(
+                            {
+                                "tool": tool_name,
+                                "error": f"Config file not found: {filepath}",
+                            }
+                        )
             except Exception as e:
-                tool_shapers.append({
-                    "tool": tool_name,
-                    "error": str(e)
-                })
-        
+                tool_shapers.append({"tool": tool_name, "error": str(e)})
+
         # Build HTML
         active_freq_x = active_shaper.get("shaper_freq_x", 0)
         active_freq_y = active_shaper.get("shaper_freq_y", 0)
         active_type_x = active_shaper.get("shaper_type_x", "unknown")
         active_type_y = active_shaper.get("shaper_type_y", "unknown")
         smoothing = active_shaper.get("smoothing", 0)
-        
-        body = f'''
+
+        body = f"""
         <section>
             <h2>Active Input Shaper</h2>
             <p>Currently applied shaper settings (changes on tool change):</p>
@@ -735,22 +793,28 @@ async def handle_input_shaper_html(request: web.Request) -> web.Response:
             <p>Values stored in each toolhead's config file (applied on tool change):</p>
             <table>
                 <tr><th>Tool</th><th>Freq X (Hz)</th><th>Freq Y (Hz)</th><th>Type X</th><th>Type Y</th><th>Config</th></tr>
-        '''
-        
+        """
+
         for ts in tool_shapers:
             if "error" in ts:
-                body += f'''
+                body += f"""
                 <tr>
                     <td><strong>{escape(ts["tool"])}</strong></td>
                     <td colspan="4" style="color:#d32f2f;">Error: {escape(ts["error"])}</td>
                     <td>-</td>
                 </tr>
-                '''
+                """
             else:
-                freq_x_str = f'{ts["freq_x"]:.1f}' if ts["freq_x"] else '<em>not set</em>'
-                freq_y_str = f'{ts["freq_y"]:.1f}' if ts["freq_y"] else '<em>not set</em>'
-                config_link = f'<a href="/config/Toolheads/{ts["tool"]}.cfg.html">View</a>'
-                body += f'''
+                freq_x_str = (
+                    f'{ts["freq_x"]:.1f}' if ts["freq_x"] else "<em>not set</em>"
+                )
+                freq_y_str = (
+                    f'{ts["freq_y"]:.1f}' if ts["freq_y"] else "<em>not set</em>"
+                )
+                config_link = (
+                    f'<a href="/config/Toolheads/{ts["tool"]}.cfg.html">View</a>'
+                )
+                body += f"""
                 <tr>
                     <td><strong>{escape(ts["tool"])}</strong></td>
                     <td>{freq_x_str}</td>
@@ -759,9 +823,9 @@ async def handle_input_shaper_html(request: web.Request) -> web.Response:
                     <td><code>{escape(ts["type_y"])}</code></td>
                     <td>{config_link}</td>
                 </tr>
-                '''
-        
-        body += '''
+                """
+
+        body += """
             </table>
         </section>
         
@@ -776,14 +840,19 @@ async def handle_input_shaper_html(request: web.Request) -> web.Response:
             </ol>
             <p><a href="/call/run_gcode.html?script=GET_INPUT_SHAPER">Check current shaper via G-code →</a></p>
         </section>
-        '''
-        
-        return web.Response(text=html_page("Input Shaper Status", body, f"{config.PRINTER_NAME}"), 
-                           content_type='text/html')
+        """
+
+        return web.Response(
+            text=html_page("Input Shaper Status", body, f"{config.PRINTER_NAME}"),
+            content_type="text/html",
+        )
     except Exception as e:
         traceback.print_exc()
-        return web.Response(text=error_html("Input Shaper Status", str(e)), 
-                           content_type='text/html', status=500)
+        return web.Response(
+            text=error_html("Input Shaper Status", str(e)),
+            content_type="text/html",
+            status=500,
+        )
 
 
 async def handle_config_files_html(request: web.Request) -> web.Response:
@@ -791,30 +860,37 @@ async def handle_config_files_html(request: web.Request) -> web.Response:
     try:
         client = get_client()
         result = await client.get_directory("config")
-        
+
         if "error" in result:
-            return web.Response(text=error_html("Config Files", result["error"]), 
-                               content_type='text/html', status=500)
-        
+            return web.Response(
+                text=error_html("Config Files", result["error"]),
+                content_type="text/html",
+                status=500,
+            )
+
         data = result.get("result", {})
         files = data.get("files", [])
         cfg_files = [f for f in files if f.get("filename", "").endswith(".cfg")]
-        
+
         rows = ""
         for f in sorted(cfg_files, key=lambda x: x.get("filename", "")):
             filename = f.get("filename", "")
             size = f.get("size", 0)
             modified = f.get("modified", 0)
-            mod_date = datetime.fromtimestamp(modified).strftime("%Y-%m-%d %H:%M") if modified else "Unknown"
-            rows += f'''
+            mod_date = (
+                datetime.fromtimestamp(modified).strftime("%Y-%m-%d %H:%M")
+                if modified
+                else "Unknown"
+            )
+            rows += f"""
             <tr>
                 <td><a href="/config/{escape(filename)}.html">{escape(filename)}</a></td>
                 <td>{size:,} bytes</td>
                 <td>{mod_date}</td>
             </tr>
-            '''
-        
-        body = f'''
+            """
+
+        body = f"""
         <section>
             <h2>Configuration Files ({len(cfg_files)})</h2>
             <table>
@@ -822,52 +898,67 @@ async def handle_config_files_html(request: web.Request) -> web.Response:
                 {rows}
             </table>
         </section>
-        '''
-        
-        return web.Response(text=html_page("Configuration Files", body), content_type='text/html')
+        """
+
+        return web.Response(
+            text=html_page("Configuration Files", body), content_type="text/html"
+        )
     except Exception as e:
-        return web.Response(text=error_html("Config Files", str(e)), 
-                           content_type='text/html', status=500)
+        return web.Response(
+            text=error_html("Config Files", str(e)),
+            content_type="text/html",
+            status=500,
+        )
 
 
 async def handle_config_file_html(request: web.Request) -> web.Response:
     """Display a config file."""
-    filepath = request.match_info.get('filepath', '').replace('.html', '')
-    
+    filepath = request.match_info.get("filepath", "").replace(".html", "")
+
     if not filepath:
-        return web.Response(text=error_html("Config File", "No file specified"), 
-                           content_type='text/html', status=400)
-    
+        return web.Response(
+            text=error_html("Config File", "No file specified"),
+            content_type="text/html",
+            status=400,
+        )
+
     try:
         client = get_client()
         # Use direct file download like the filesystem tool does
         session = await client._get_session()
         url = f"{client.base_url}/server/files/config/{filepath}"
-        
+
         async with session.get(url) as response:
             if response.status == 404:
-                return web.Response(text=error_html("Config File", f"File not found: {filepath}"), 
-                                   content_type='text/html', status=404)
+                return web.Response(
+                    text=error_html("Config File", f"File not found: {filepath}"),
+                    content_type="text/html",
+                    status=404,
+                )
             response.raise_for_status()
             content = await response.text()
-        
-        body = f'''
+
+        body = f"""
         <section>
             <h2>{escape(filepath)}</h2>
             <p><a href="/config.html">← Back to file list</a></p>
             <pre style="white-space:pre-wrap; word-wrap:break-word;">{escape(content)}</pre>
         </section>
-        '''
-        
-        return web.Response(text=html_page(f"Config: {filepath}", body), content_type='text/html')
+        """
+
+        return web.Response(
+            text=html_page(f"Config: {filepath}", body), content_type="text/html"
+        )
     except Exception as e:
-        return web.Response(text=error_html("Config File", str(e)), 
-                           content_type='text/html', status=500)
+        return web.Response(
+            text=error_html("Config File", str(e)), content_type="text/html", status=500
+        )
 
 
 # ============================================================
 # MCP Protocol Handler (JSON-RPC style)
 # ============================================================
+
 
 async def handle_mcp(request: web.Request) -> web.Response:
     """
@@ -877,32 +968,30 @@ async def handle_mcp(request: web.Request) -> web.Response:
     try:
         data = await request.json()
     except json.JSONDecodeError:
-        return web.json_response({
-            "jsonrpc": "2.0",
-            "error": {"code": -32700, "message": "Parse error"},
-            "id": None
-        }, status=400)
-    
+        return web.json_response(
+            {
+                "jsonrpc": "2.0",
+                "error": {"code": -32700, "message": "Parse error"},
+                "id": None,
+            },
+            status=400,
+        )
+
     method = data.get("method", "")
     params = data.get("params", {})
     request_id = data.get("id")
-    
+
     result = None
     error = None
-    
+
     try:
         if method == "initialize":
             result = {
                 "protocolVersion": "2024-11-05",
-                "serverInfo": {
-                    "name": "klipper-mcp",
-                    "version": "1.0.0"
-                },
-                "capabilities": {
-                    "tools": {"listChanged": False}
-                }
+                "serverInfo": {"name": "klipper-mcp", "version": "1.0.0"},
+                "capabilities": {"tools": {"listChanged": False}},
             }
-        
+
         elif method == "tools/list":
             tools_list = []
             type_map = {str: "string", int: "integer", float: "number", bool: "boolean"}
@@ -923,60 +1012,68 @@ async def handle_mcp(request: web.Request) -> web.Response:
                 input_schema = {"type": "object", "properties": properties}
                 if required:
                     input_schema["required"] = required
-                tools_list.append({
-                    "name": name,
-                    "description": get_tool_description(tool_info),
-                    "inputSchema": input_schema
-                })
+                tools_list.append(
+                    {
+                        "name": name,
+                        "description": get_tool_description(tool_info),
+                        "inputSchema": input_schema,
+                    }
+                )
             result = {"tools": tools_list}
-        
+
         elif method == "tools/call":
             tool_name = params.get("name")
             arguments = params.get("arguments", {})
-            
+
             if tool_name not in TOOLS:
                 error = {"code": -32601, "message": f"Unknown tool: {tool_name}"}
             else:
                 tool_info = TOOLS[tool_name]
                 func = tool_info["function"]
-                
+
                 audit_log("tool_call", {"tool": tool_name, "arguments": arguments})
-                
+
                 if asyncio.iscoroutinefunction(func):
                     tool_result = await func(**arguments)
                 else:
                     tool_result = func(**arguments)
-                
+
                 # Parse JSON string result if needed
                 if isinstance(tool_result, str):
                     try:
                         tool_result = json.loads(tool_result)
                     except:
                         pass
-                
+
                 result = {
-                    "content": [{
-                        "type": "text",
-                        "text": json.dumps(tool_result, indent=2) if isinstance(tool_result, (dict, list)) else str(tool_result)
-                    }]
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": (
+                                json.dumps(tool_result, indent=2)
+                                if isinstance(tool_result, (dict, list))
+                                else str(tool_result)
+                            ),
+                        }
+                    ]
                 }
-        
+
         elif method == "ping":
             result = {}
-        
+
         else:
             error = {"code": -32601, "message": f"Method not found: {method}"}
-    
+
     except Exception as e:
         traceback.print_exc()
         error = {"code": -32603, "message": str(e)}
-    
+
     response = {"jsonrpc": "2.0", "id": request_id}
     if error:
         response["error"] = error
     else:
         response["result"] = result
-    
+
     return web.json_response(response)
 
 
@@ -984,18 +1081,19 @@ async def handle_mcp(request: web.Request) -> web.Response:
 # Main Application
 # ============================================================
 
+
 async def on_startup(app):
     """Called when the server starts."""
     print("Initializing Moonraker client...", file=sys.stderr)
     init_client()
-    
+
     print("Registering tools...", file=sys.stderr)
     register_all_tools()
-    
-    audit_log("server_start", {
-        "printer": config.PRINTER_NAME,
-        "moonraker_url": config.MOONRAKER_URL
-    })
+
+    audit_log(
+        "server_start",
+        {"printer": config.PRINTER_NAME, "moonraker_url": config.MOONRAKER_URL},
+    )
 
 
 async def on_cleanup(app):
@@ -1008,7 +1106,7 @@ async def on_cleanup(app):
 def create_app() -> web.Application:
     """Create the aiohttp application."""
     app = web.Application()
-    
+
     # JSON API routes
     app.router.add_get("/", handle_server_info)
     app.router.add_get("/health", handle_health)
@@ -1016,7 +1114,7 @@ def create_app() -> web.Application:
     app.router.add_get("/tools", handle_list_tools)
     app.router.add_post("/tools/call", handle_call_tool)
     app.router.add_post("/mcp", handle_mcp)  # MCP protocol endpoint
-    
+
     # HTML routes (for fetch_webpage/browser compatibility)
     app.router.add_get("/index.html", handle_server_info_html)
     app.router.add_get("/status.html", handle_printer_status_html)
@@ -1026,11 +1124,11 @@ def create_app() -> web.Application:
     app.router.add_get("/config.html", handle_config_files_html)
     app.router.add_get("/config/{filepath:.+}.html", handle_config_file_html)
     app.router.add_get("/call/{tool_name}.html", handle_call_tool_html)
-    
+
     # Lifecycle hooks
     app.on_startup.append(on_startup)
     app.on_cleanup.append(on_cleanup)
-    
+
     return app
 
 
@@ -1042,19 +1140,22 @@ def main():
     print(f"Moonraker: {config.MOONRAKER_URL}", file=sys.stderr)
     print(f"ARMED: {config.ARMED}", file=sys.stderr)
     print("=" * 50, file=sys.stderr)
-    
+
     app = create_app()
-    
+
     print(f"Starting server on {config.MCP_HOST}:{config.MCP_PORT}", file=sys.stderr)
     print(f"JSON API: http://{config.MCP_HOST}:{config.MCP_PORT}/", file=sys.stderr)
-    print(f"HTML UI:  http://{config.MCP_HOST}:{config.MCP_PORT}/index.html", file=sys.stderr)
+    print(
+        f"HTML UI:  http://{config.MCP_HOST}:{config.MCP_PORT}/index.html",
+        file=sys.stderr,
+    )
     print(f"MCP:      http://{config.MCP_HOST}:{config.MCP_PORT}/mcp", file=sys.stderr)
-    
+
     web.run_app(
         app,
         host=config.MCP_HOST,
         port=config.MCP_PORT,
-        print=lambda x: print(x, file=sys.stderr)
+        print=lambda x: print(x, file=sys.stderr),
     )
 
 
