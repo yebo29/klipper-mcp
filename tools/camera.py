@@ -105,7 +105,7 @@ def register_camera_tools(mcp):
             "variable_fps_max": settings.get("variable_fps_max"),
         }, indent=2)
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def set_timelapse_enabled(enabled: bool) -> str:
         """
         Enable or disable timelapse recording.
@@ -124,7 +124,7 @@ def register_camera_tools(mcp):
             "timelapse_enabled": enabled
         })
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def configure_timelapse(
         mode: Optional[str] = None,
         autorender: Optional[bool] = None,
@@ -170,7 +170,7 @@ def register_camera_tools(mcp):
             "updated_settings": settings
         })
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def render_timelapse() -> str:
         """
         Manually trigger timelapse rendering.
@@ -213,7 +213,7 @@ def register_camera_tools(mcp):
         
         return json.dumps({"timelapses": timelapses}, indent=2)
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def take_timelapse_frame() -> str:
         """
         Manually capture a timelapse frame.

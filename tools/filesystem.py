@@ -150,7 +150,7 @@ def register_filesystem_tools(mcp):
         except Exception as e:
             return json.dumps({"error": str(e)})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def write_file(filepath: str, content: str, pin: str) -> str:
         """
         Write content to a file on the printer.
@@ -201,7 +201,7 @@ def register_filesystem_tools(mcp):
         except Exception as e:
             return json.dumps({"error": str(e)})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def delete_file(filepath: str, pin: str) -> str:
         """
         Delete a file from the printer.

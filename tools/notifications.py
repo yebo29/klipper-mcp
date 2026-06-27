@@ -20,7 +20,7 @@ def register_notification_tools(mcp):
         except Exception as e:
             return {"error": str(e)}
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def send_notification(
         title: str,
         message: str,
@@ -87,7 +87,7 @@ def register_notification_tools(mcp):
             "channels": results
         }, indent=2)
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def announce_tts(message: str) -> str:
         """
         Make a text-to-speech announcement through the printer's speaker.
@@ -123,7 +123,7 @@ def register_notification_tools(mcp):
         except Exception as e:
             return json.dumps({"error": str(e)})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def notify_print_complete(filename: str, print_time: str, success: bool = True) -> str:
         """
         Send a print completion notification.
@@ -159,7 +159,7 @@ def register_notification_tools(mcp):
         
         return notification_result
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def notify_temperature_alert(
         heater: str,
         current_temp: float,
@@ -218,7 +218,7 @@ def register_notification_tools(mcp):
             }
         }, indent=2)
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def test_notifications() -> str:
         """
         Send a test notification to all configured channels.
@@ -230,7 +230,7 @@ def register_notification_tools(mcp):
             "info"
         )
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def console_message(message: str, prefix: str = "info") -> str:
         """
         Send a message to the Moonraker/Mainsail/Fluidd console.

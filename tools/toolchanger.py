@@ -10,7 +10,7 @@ from moonraker import get_client
 def register_toolchanger_tools(mcp):
     """Register StealthChanger toolchanger tools."""
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def select_tool(tool_number: int) -> str:
         """
         Select/activate a tool (T0, T1, T2, etc).
@@ -61,7 +61,7 @@ def register_toolchanger_tools(mcp):
             "available_tools": toolchanger.get("tool_numbers", list(range(config.TOOL_COUNT)))
         })
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def initialize_toolchanger() -> str:
         """
         Initialize the toolchanger system.
@@ -121,7 +121,7 @@ def register_toolchanger_tools(mcp):
         
         return json.dumps(offsets, indent=2)
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def tool_align_start(tool_number: int) -> str:
         """
         Start tool alignment procedure - positions toolhead 100mm from dock.
@@ -148,7 +148,7 @@ def register_toolchanger_tools(mcp):
             "next_step": "Use 'tool_align_test' to test docking/undocking procedure"
         })
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def tool_align_test() -> str:
         """
         Test the docking/undocking procedure for current tool alignment.
@@ -170,7 +170,7 @@ def register_toolchanger_tools(mcp):
             "next_step": "Run 'tool_align_done' when satisfied or 'tool_align_test' to retry"
         })
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def tool_align_done() -> str:
         """
         Complete tool alignment and move toolhead away from dock.
@@ -187,7 +187,7 @@ def register_toolchanger_tools(mcp):
         
         return json.dumps({"success": True, "message": "Tool alignment complete. Toolhead moved away from dock."})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def start_crash_detection() -> str:
         """
         Enable tool crash detection during printing.
@@ -205,7 +205,7 @@ def register_toolchanger_tools(mcp):
         
         return json.dumps({"success": True, "crash_detection": "enabled"})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def stop_crash_detection() -> str:
         """
         Disable tool crash detection.
@@ -218,7 +218,7 @@ def register_toolchanger_tools(mcp):
         
         return json.dumps({"success": True, "crash_detection": "disabled"})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def dropoff_tool() -> str:
         """
         Drop off the currently loaded tool to its dock.
@@ -235,7 +235,7 @@ def register_toolchanger_tools(mcp):
         
         return json.dumps({"success": True, "message": "Tool dropped off at dock"})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def pickup_tool(tool_number: int) -> str:
         """
         Pick up a specific tool from its dock.
@@ -258,7 +258,7 @@ def register_toolchanger_tools(mcp):
         
         return json.dumps({"success": True, "picked_up": tool_number})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def set_tool_temperature(tool_number: int, target: float) -> str:
         """
         Set temperature for a specific tool's extruder.
@@ -305,7 +305,7 @@ def register_toolchanger_tools(mcp):
             "hint": "Use 'read_file' tool to read your tool config files for exact values"
         })
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def quad_gantry_level() -> str:
         """
         Run Quad Gantry Level (QGL) procedure.

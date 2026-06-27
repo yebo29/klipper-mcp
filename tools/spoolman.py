@@ -145,7 +145,7 @@ def register_spoolman_tools(mcp):
             "filament_used_mm": spoolman.get("filament_used"),
         }, indent=2)
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def set_active_spool(spool_id: int) -> str:
         """
         Set the active spool for tracking filament usage.
@@ -166,7 +166,7 @@ def register_spoolman_tools(mcp):
             "active_spool_id": spool_id
         })
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def clear_active_spool() -> str:
         """Clear the currently active spool."""
         from moonraker import get_client

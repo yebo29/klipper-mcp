@@ -222,7 +222,7 @@ def register_system_tools(mcp):
         except Exception as e:
             return json.dumps({"error": str(e)})
 
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def update_component(component: str) -> str:
         """
         Update a specific software component (klipper, moonraker, etc.).
@@ -282,7 +282,7 @@ def register_system_tools(mcp):
         except Exception as e:
             return json.dumps({"error": str(e)})
 
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def refresh_update_status() -> str:
         """
         Refresh the update status by checking remote repositories.
@@ -351,7 +351,7 @@ def register_system_tools(mcp):
         
         return json.dumps(results, indent=2)
 
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def restart_service(service: str) -> str:
         """
         Restart a printer-related service.
@@ -397,7 +397,7 @@ def register_system_tools(mcp):
         except Exception as e:
             return json.dumps({"error": str(e)})
 
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def reboot_system(delay_seconds: int = 5) -> str:
         """
         Reboot the CB1/Raspberry Pi system.
@@ -428,7 +428,7 @@ def register_system_tools(mcp):
         except Exception as e:
             return json.dumps({"error": str(e)})
 
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def shutdown_system(delay_seconds: int = 5) -> str:
         """
         Shutdown the CB1/Raspberry Pi system.
