@@ -179,11 +179,20 @@ def register_all_tools():
     """Import and register all tool modules."""
     from tools import register_all_tools as _register
 
-    # Create a mock MCP object that captures tool registrations
+    read_only = getattr(config, "READ_ONLY", False)
+    skipped = []
+
+    # Create a mock MCP object that captures tool registrations.
+    # Tools that mutate state declare write=True; in READ_ONLY mode they are
+    # never registered, so they do not exist and cannot be called. This is a
+    # server-side guarantee, independent of ARMED or ADMIN_PIN.
     class MockMCP:
-        def tool(self):
+        def tool(self, write: bool = False):
             def decorator(func):
                 tool_name = func.__name__
+                if read_only and write:
+                    skipped.append(tool_name)
+                    return func
                 TOOLS[tool_name] = {
                     "function": func,
                     "description": func.__doc__ or "",
@@ -196,7 +205,14 @@ def register_all_tools():
     mock_mcp = MockMCP()
     _register(mock_mcp)
 
-    print(f"✓ Registered {len(TOOLS)} tools", file=sys.stderr)
+    if read_only:
+        print(
+            f"✓ READ_ONLY mode: registered {len(TOOLS)} read tools, "
+            f"blocked {len(skipped)} write tools",
+            file=sys.stderr,
+        )
+    else:
+        print(f"✓ Registered {len(TOOLS)} tools", file=sys.stderr)
 
 
 # ============================================================
@@ -276,6 +292,7 @@ async def handle_server_info(request: web.Request) -> web.Response:
             "printer": config.PRINTER_NAME,
             "moonraker_url": config.MOONRAKER_URL,
             "armed": config.ARMED,
+            "read_only": getattr(config, "READ_ONLY", False),
             "tools_count": len(TOOLS),
             "features": {
                 "stealthchanger": True,
@@ -356,6 +373,7 @@ async def handle_server_info_html(request: web.Request) -> web.Response:
             <dt>Printer</dt><dd>{escape(config.PRINTER_NAME)}</dd>
             <dt>Moonraker URL</dt><dd><code>{escape(config.MOONRAKER_URL)}</code></dd>
             <dt>Armed Mode</dt><dd><span class="{"status-ok" if config.ARMED else "status-error"}">{config.ARMED}</span></dd>
+            <dt>Read-Only Mode</dt><dd><span class="{"status-ok" if getattr(config, "READ_ONLY", False) else "status-error"}">{getattr(config, "READ_ONLY", False)}</span></dd>
             <dt>Tools Available</dt><dd>{len(TOOLS)}</dd>
         </dl>
     </section>
@@ -1139,6 +1157,7 @@ def main():
     print(f"Printer: {config.PRINTER_NAME}", file=sys.stderr)
     print(f"Moonraker: {config.MOONRAKER_URL}", file=sys.stderr)
     print(f"ARMED: {config.ARMED}", file=sys.stderr)
+    print(f"READ_ONLY: {getattr(config, 'READ_ONLY', False)}", file=sys.stderr)
     print("=" * 50, file=sys.stderr)
 
     app = create_app()

@@ -74,7 +74,7 @@ def register_tmc_tools(mcp):
             'count': len(tmc_status)
         }, indent=2)
 
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def set_tmc_current(
         stepper: str,
         run_current: Optional[float] = None,
@@ -210,7 +210,7 @@ def register_tmc_tools(mcp):
         except Exception as e:
             return json.dumps({'error': str(e)}, indent=2)
 
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def set_tmc_field(stepper: str, field: str, value: int) -> str:
         """
         Set a specific TMC register field value.

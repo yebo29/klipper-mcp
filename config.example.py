@@ -39,6 +39,14 @@ API_KEY = os.getenv("API_KEY", "CHANGE-ME-TO-A-SECURE-KEY")
 # Set to True once you've verified everything works
 ARMED = os.getenv("ARMED", "false").lower() == "true"
 
+# Read-only mode - when True, ALL mutating tools are unregistered at startup so
+# the AI agent can observe but cannot change anything: no gcode, temps, motion,
+# file writes/deletes, service restarts, component/firmware updates, LED/TMC
+# changes, notifications, etc. Read/analysis tools remain available.
+# This is a server-side guarantee: blocked tools do not exist, so they cannot be
+# called regardless of ARMED or ADMIN_PIN. Overrides ARMED for write operations.
+READ_ONLY = os.getenv("READ_ONLY", "false").lower() == "true"
+
 # Admin PIN for destructive operations (delete files, restore config, reboot)
 ADMIN_PIN = os.getenv("ADMIN_PIN", "123456")
 

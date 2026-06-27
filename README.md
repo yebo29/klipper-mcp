@@ -274,6 +274,7 @@ nano ~/klipper-mcp/config.py
 | Setting     | Description                 | Default  |
 |-------------|-----------------------------|----------|
 | `ARMED`     | Enable dangerous operations | `false`  |
+| `READ_ONLY` | Block all mutating tools    | `false`  |
 | `ADMIN_PIN` | PIN for destructive ops     | `123456` |
 
 **Optional integrations:**
@@ -371,6 +372,30 @@ Configure multiple printers in settings.json:
 
 Dangerous operations (G-code execution, temperature changes) require `ARMED=True` in config.
 
+### READ_ONLY Mode
+
+For a hard guarantee that an AI agent can observe but never change anything, set
+`READ_ONLY=True`. Every mutating tool is **unregistered at startup** — it does not
+exist, so it cannot be called regardless of `ARMED` or `ADMIN_PIN`. This is a
+server-side guarantee, not a per-call check that could be bypassed.
+
+When `READ_ONLY=True`, all read/analysis tools stay available (status, temps,
+logs, mesh, history, snapshots, config inspection, diagnostics) while everything
+that writes is blocked, including:
+
+- Motion & print control (`run_gcode`, `home_printer`, `start_print`, `emergency_stop`, toolchanger moves)
+- Temperature/heater changes (`set_temperature`, `set_tool_temperature`)
+- File writes/deletes (`write_file`, `delete_file`, `restore_config`, `clear_old_logs`)
+- System changes (`update_component`, `restart_service`, `reboot_system`, `shutdown_system`)
+- Hardware tuning (`set_tmc_current`, `set_tmc_field`, bed-mesh save/clear, LED changes)
+- External side-effects (notifications, TTS, console messages, Spoolman/timelapse changes)
+
+`READ_ONLY` overrides `ARMED` for write operations. The startup log and the status
+page (`/`) show how many tools were registered vs. blocked.
+
+> **Adding a new tool?** If it changes any state, mark its decorator
+> `@mcp.tool(write=True)` so `READ_ONLY` excludes it. Read-only tools use `@mcp.tool()`.
+
 ### Admin PIN
 
 Destructive operations (file deletion, config restore, system reboot) require the admin PIN.
@@ -400,6 +425,7 @@ MCP_TRANSPORT = "http"  # or "stdio" for local use
 # Security
 API_KEY = "your-secret-key"        # Required for all API calls
 ARMED = False                       # Set True to enable dangerous ops
+READ_ONLY = False                   # Set True to block ALL mutating tools
 ADMIN_PIN = "1234"                  # For destructive operations
 
 # Camera

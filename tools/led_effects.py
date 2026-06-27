@@ -68,7 +68,7 @@ def load_scenes() -> dict:
 def register_led_tools(mcp):
     """Register LED effects tools."""
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def set_led_effect(
         effect: str,
         fadetime: float = 0.0,
@@ -111,7 +111,7 @@ def register_led_tools(mcp):
             "restart": restart
         })
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def stop_led_effect(effect: str, fadetime: float = 0.0) -> str:
         """
         Stop a specific LED effect.
@@ -133,7 +133,7 @@ def register_led_tools(mcp):
         
         return json.dumps({"success": True, "stopped": effect, "fadetime": fadetime})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def stop_all_led_effects(
         leds: Optional[str] = None,
         fadetime: float = 0.0
@@ -164,7 +164,7 @@ def register_led_tools(mcp):
             "fadetime": fadetime
         })
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def set_led_scene(scene: str) -> str:
         """
         Activate a pre-defined LED scene.
@@ -247,7 +247,7 @@ def register_led_tools(mcp):
         
         return json.dumps({"scenes": scene_list}, indent=2)
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def set_led_direct(
         led_chain: str,
         red: float = 0.0,

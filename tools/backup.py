@@ -116,7 +116,7 @@ def register_backup_tools(mcp):
             "backups": backups
         }, indent=2)
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def restore_config(backup_name: str, admin_pin: str) -> str:
         """
         Restore configuration from a backup.
@@ -169,7 +169,7 @@ def register_backup_tools(mcp):
             "note": "Run FIRMWARE_RESTART to apply changes"
         }, indent=2)
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def log_maintenance(
         component: str,
         action: str,

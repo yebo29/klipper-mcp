@@ -421,7 +421,7 @@ def register_diagnostics_tools(mcp):
             "files": log_files
         }, indent=2)
 
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def clear_old_logs(days_to_keep: int = 7, dry_run: bool = True) -> str:
         """
         Clear log files older than specified days.
@@ -490,7 +490,7 @@ def register_diagnostics_tools(mcp):
             "message": "Dry run - no files deleted. Set dry_run=false to delete." if dry_run else f"Deleted {len(to_delete)} files"
         }, indent=2)
 
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def truncate_log(log_name: str = "klippy", keep_lines: int = 1000) -> str:
         """
         Truncate a log file keeping only the most recent lines.

@@ -204,7 +204,7 @@ def register_temperature_tools(mcp):
             "count": len(profile_list)
         }, indent=2)
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def load_bed_mesh_profile(profile_name: str) -> str:
         """
         Load a saved bed mesh profile.
@@ -223,7 +223,7 @@ def register_temperature_tools(mcp):
             "loaded_profile": profile_name
         })
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def calibrate_bed_mesh() -> str:
         """
         Run bed mesh calibration.
@@ -243,7 +243,7 @@ def register_temperature_tools(mcp):
             "message": "Bed mesh calibration started. This may take a few minutes."
         })
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def save_bed_mesh_profile(profile_name: str) -> str:
         """
         Save current bed mesh to a named profile.
@@ -266,7 +266,7 @@ def register_temperature_tools(mcp):
             "message": "Profile saved and config updated"
         })
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def clear_bed_mesh() -> str:
         """Clear the currently loaded bed mesh."""
         client = get_client()

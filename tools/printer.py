@@ -91,7 +91,7 @@ def register_printer_tools(mcp):
         
         return json.dumps({"temperatures": temps})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def set_temperature(heater: str, target: float) -> str:
         """
         Set target temperature for a heater.
@@ -114,7 +114,7 @@ def register_printer_tools(mcp):
         
         return json.dumps({"success": True, "heater": heater, "target": target})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def run_gcode(gcode: str) -> str:
         """
         Execute G-code command(s) on the printer.
@@ -142,7 +142,7 @@ def register_printer_tools(mcp):
         
         return json.dumps({"success": True, "executed": gcode})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def emergency_stop(pin: str) -> str:
         """
         EMERGENCY STOP - Immediately halt the printer.
@@ -162,7 +162,7 @@ def register_printer_tools(mcp):
         
         return json.dumps({"success": True, "message": "EMERGENCY STOP executed!"})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def home_printer(axes: str = "XYZ") -> str:
         """
         Home printer axes.
@@ -188,7 +188,7 @@ def register_printer_tools(mcp):
         
         return json.dumps({"success": True, "homed": list(axes)})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def start_print(filename: str) -> str:
         """
         Start printing a G-code file.
@@ -208,7 +208,7 @@ def register_printer_tools(mcp):
         
         return json.dumps({"success": True, "printing": filename})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def pause_print() -> str:
         """Pause the current print job."""
         client = get_client()
@@ -219,7 +219,7 @@ def register_printer_tools(mcp):
         
         return json.dumps({"success": True, "state": "paused"})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def resume_print() -> str:
         """Resume a paused print job."""
         client = get_client()
@@ -230,7 +230,7 @@ def register_printer_tools(mcp):
         
         return json.dumps({"success": True, "state": "resumed"})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def cancel_print() -> str:
         """
         Cancel the current print job.
@@ -247,7 +247,7 @@ def register_printer_tools(mcp):
         
         return json.dumps({"success": True, "state": "cancelled"})
     
-    @mcp.tool()
+    @mcp.tool(write=True)
     async def restart_klipper() -> str:
         """
         Restart Klipper firmware.
