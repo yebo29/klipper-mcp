@@ -2,6 +2,7 @@
 Camera and Timelapse Tools
 Webcam snapshots, stream URLs, and timelapse control
 """
+
 import json
 import base64
 from typing import Optional
@@ -11,7 +12,7 @@ from moonraker import get_client
 
 def register_camera_tools(mcp):
     """Register camera and timelapse tools."""
-    
+
     @mcp.tool()
     async def capture_snapshot() -> str:
         """
@@ -19,25 +20,29 @@ def register_camera_tools(mcp):
         Returns the image as a base64-encoded string.
         """
         client = get_client()
-        
+
         image_bytes = await client.get_webcam_snapshot()
-        
+
         if image_bytes is None:
-            return json.dumps({
-                "error": "Failed to capture snapshot. Check camera configuration.",
-                "camera_url": config.CAMERA_SNAPSHOT_URL
-            })
-        
+            return json.dumps(
+                {
+                    "error": "Failed to capture snapshot. Check camera configuration.",
+                    "camera_url": config.CAMERA_SNAPSHOT_URL,
+                }
+            )
+
         # Encode as base64
-        b64_image = base64.b64encode(image_bytes).decode('utf-8')
-        
-        return json.dumps({
-            "success": True,
-            "format": "jpeg",
-            "size_bytes": len(image_bytes),
-            "image_base64": b64_image
-        })
-    
+        b64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        return json.dumps(
+            {
+                "success": True,
+                "format": "jpeg",
+                "size_bytes": len(image_bytes),
+                "image_base64": b64_image,
+            }
+        )
+
     @mcp.tool()
     async def get_camera_stream_url() -> str:
         """
@@ -45,25 +50,32 @@ def register_camera_tools(mcp):
         Use this URL to view the live camera feed in a browser or application.
         """
         client = get_client()
-        
+
         # Try to get webcam list from Moonraker
         result = await client.get_webcam_list()
-        
+
         webcams = []
         if "result" in result:
             for cam in result.get("result", {}).get("webcams", []):
-                webcams.append({
-                    "name": cam.get("name"),
-                    "stream_url": cam.get("stream_url"),
-                    "snapshot_url": cam.get("snapshot_url"),
-                })
-        
-        return json.dumps({
-            "default_stream_url": config.CAMERA_STREAM_URL,
-            "default_snapshot_url": config.CAMERA_SNAPSHOT_URL,
-            "configured_webcams": webcams if webcams else "No webcams configured in Moonraker"
-        }, indent=2)
-    
+                webcams.append(
+                    {
+                        "name": cam.get("name"),
+                        "stream_url": cam.get("stream_url"),
+                        "snapshot_url": cam.get("snapshot_url"),
+                    }
+                )
+
+        return json.dumps(
+            {
+                "default_stream_url": config.CAMERA_STREAM_URL,
+                "default_snapshot_url": config.CAMERA_SNAPSHOT_URL,
+                "configured_webcams": (
+                    webcams if webcams else "No webcams configured in Moonraker"
+                ),
+            },
+            indent=2,
+        )
+
     @mcp.tool()
     async def get_timelapse_settings() -> str:
         """
@@ -72,68 +84,70 @@ def register_camera_tools(mcp):
         """
         client = get_client()
         result = await client.get_timelapse_settings()
-        
+
         if "error" in result:
-            return json.dumps({
-                "error": result["error"],
-                "hint": "moonraker-timelapse plugin may not be installed"
-            })
-        
+            return json.dumps(
+                {
+                    "error": result["error"],
+                    "hint": "moonraker-timelapse plugin may not be installed",
+                }
+            )
+
         settings = result.get("result", {})
-        
-        return json.dumps({
-            "enabled": settings.get("enabled"),
-            "mode": settings.get("mode"),
-            "camera": settings.get("camera"),
-            "gcode_verbose": settings.get("gcode_verbose"),
-            "parkhead": settings.get("parkhead"),
-            "parkpos": settings.get("parkpos"),
-            "park_time": settings.get("park_time"),
-            "park_retract_speed": settings.get("park_retract_speed"),
-            "park_extrude_speed": settings.get("park_extrude_speed"),
-            "park_retract_distance": settings.get("park_retract_distance"),
-            "park_extrude_distance": settings.get("park_extrude_distance"),
-            "hyperlapse_cycle": settings.get("hyperlapse_cycle"),
-            "autorender": settings.get("autorender"),
-            "constant_rate_factor": settings.get("constant_rate_factor"),
-            "output_framerate": settings.get("output_framerate"),
-            "pixelformat": settings.get("pixelformat"),
-            "extraoutputparams": settings.get("extraoutputparams"),
-            "variable_fps": settings.get("variable_fps"),
-            "targetlength": settings.get("targetlength"),
-            "variable_fps_min": settings.get("variable_fps_min"),
-            "variable_fps_max": settings.get("variable_fps_max"),
-        }, indent=2)
-    
+
+        return json.dumps(
+            {
+                "enabled": settings.get("enabled"),
+                "mode": settings.get("mode"),
+                "camera": settings.get("camera"),
+                "gcode_verbose": settings.get("gcode_verbose"),
+                "parkhead": settings.get("parkhead"),
+                "parkpos": settings.get("parkpos"),
+                "park_time": settings.get("park_time"),
+                "park_retract_speed": settings.get("park_retract_speed"),
+                "park_extrude_speed": settings.get("park_extrude_speed"),
+                "park_retract_distance": settings.get("park_retract_distance"),
+                "park_extrude_distance": settings.get("park_extrude_distance"),
+                "hyperlapse_cycle": settings.get("hyperlapse_cycle"),
+                "autorender": settings.get("autorender"),
+                "constant_rate_factor": settings.get("constant_rate_factor"),
+                "output_framerate": settings.get("output_framerate"),
+                "pixelformat": settings.get("pixelformat"),
+                "extraoutputparams": settings.get("extraoutputparams"),
+                "variable_fps": settings.get("variable_fps"),
+                "targetlength": settings.get("targetlength"),
+                "variable_fps_min": settings.get("variable_fps_min"),
+                "variable_fps_max": settings.get("variable_fps_max"),
+            },
+            indent=2,
+        )
+
     @mcp.tool(write=True)
     async def set_timelapse_enabled(enabled: bool) -> str:
         """
         Enable or disable timelapse recording.
-        
+
         Args:
             enabled: True to enable timelapse, False to disable
         """
         client = get_client()
         result = await client.set_timelapse_settings({"enabled": enabled})
-        
+
         if "error" in result:
             return json.dumps({"error": result["error"]})
-        
-        return json.dumps({
-            "success": True,
-            "timelapse_enabled": enabled
-        })
-    
+
+        return json.dumps({"success": True, "timelapse_enabled": enabled})
+
     @mcp.tool(write=True)
     async def configure_timelapse(
         mode: Optional[str] = None,
         autorender: Optional[bool] = None,
         output_framerate: Optional[int] = None,
-        parkhead: Optional[bool] = None
+        parkhead: Optional[bool] = None,
     ) -> str:
         """
         Configure timelapse settings.
-        
+
         Args:
             mode: Capture mode - 'layermacro' or 'hyperlapse'
             autorender: Automatically render timelapse when print completes
@@ -141,35 +155,34 @@ def register_camera_tools(mcp):
             parkhead: Park head during captures for cleaner frames
         """
         settings = {}
-        
+
         if mode is not None:
-            if mode not in ['layermacro', 'hyperlapse']:
-                return json.dumps({"error": "mode must be 'layermacro' or 'hyperlapse'"})
+            if mode not in ["layermacro", "hyperlapse"]:
+                return json.dumps(
+                    {"error": "mode must be 'layermacro' or 'hyperlapse'"}
+                )
             settings["mode"] = mode
-        
+
         if autorender is not None:
             settings["autorender"] = autorender
-        
+
         if output_framerate is not None:
             settings["output_framerate"] = output_framerate
-        
+
         if parkhead is not None:
             settings["parkhead"] = parkhead
-        
+
         if not settings:
             return json.dumps({"error": "No settings provided to update"})
-        
+
         client = get_client()
         result = await client.set_timelapse_settings(settings)
-        
+
         if "error" in result:
             return json.dumps({"error": result["error"]})
-        
-        return json.dumps({
-            "success": True,
-            "updated_settings": settings
-        })
-    
+
+        return json.dumps({"success": True, "updated_settings": settings})
+
     @mcp.tool(write=True)
     async def render_timelapse() -> str:
         """
@@ -178,41 +191,40 @@ def register_camera_tools(mcp):
         """
         client = get_client()
         result = await client.render_timelapse()
-        
+
         if "error" in result:
             return json.dumps({"error": result["error"]})
-        
-        return json.dumps({
-            "success": True,
-            "message": "Timelapse rendering started"
-        })
-    
+
+        return json.dumps({"success": True, "message": "Timelapse rendering started"})
+
     @mcp.tool()
     async def list_timelapses() -> str:
         """List all rendered timelapse videos."""
         client = get_client()
         result = await client.list_timelapses()
-        
+
         if "error" in result:
             return json.dumps({"error": result["error"]})
-        
+
         files = result.get("result", [])
-        
+
         timelapses = []
         for f in files:
             filename = f.get("filename", "")
-            if filename.endswith(('.mp4', '.webm', '.mkv')):
-                timelapses.append({
-                    "filename": filename,
-                    "size_mb": round(f.get("size", 0) / 1024 / 1024, 2),
-                    "modified": f.get("modified"),
-                })
-        
+            if filename.endswith((".mp4", ".webm", ".mkv")):
+                timelapses.append(
+                    {
+                        "filename": filename,
+                        "size_mb": round(f.get("size", 0) / 1024 / 1024, 2),
+                        "modified": f.get("modified"),
+                    }
+                )
+
         # Sort by modified date, newest first
         timelapses.sort(key=lambda x: x.get("modified", 0), reverse=True)
-        
+
         return json.dumps({"timelapses": timelapses}, indent=2)
-    
+
     @mcp.tool(write=True)
     async def take_timelapse_frame() -> str:
         """
@@ -221,11 +233,8 @@ def register_camera_tools(mcp):
         """
         client = get_client()
         result = await client.run_gcode("TIMELAPSE_TAKE_FRAME")
-        
+
         if "error" in result:
             return json.dumps({"error": result["error"]})
-        
-        return json.dumps({
-            "success": True,
-            "message": "Timelapse frame captured"
-        })
+
+        return json.dumps({"success": True, "message": "Timelapse frame captured"})

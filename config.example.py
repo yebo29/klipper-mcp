@@ -5,6 +5,7 @@ Copy this file to config.py and customize for your printer.
   cp config.example.py config.py
   nano config.py
 """
+
 import os
 
 # Base directories (derived from environment, never hardcoded)
@@ -72,8 +73,12 @@ ALLOWED_PATHS = [
 # CAMERA SETTINGS
 # =============================================================================
 # Crowsnest/mjpg-streamer URLs
-CAMERA_SNAPSHOT_URL = os.getenv("CAMERA_SNAPSHOT_URL", "http://localhost/webcam/?action=snapshot")
-CAMERA_STREAM_URL = os.getenv("CAMERA_STREAM_URL", "http://localhost/webcam/?action=stream")
+CAMERA_SNAPSHOT_URL = os.getenv(
+    "CAMERA_SNAPSHOT_URL", "http://localhost/webcam/?action=snapshot"
+)
+CAMERA_STREAM_URL = os.getenv(
+    "CAMERA_STREAM_URL", "http://localhost/webcam/?action=stream"
+)
 
 # =============================================================================
 # SPOOLMAN SETTINGS (optional filament tracking)
@@ -124,8 +129,12 @@ TOOL_NAMES = {
 # MAINTENANCE TRACKING
 # =============================================================================
 # Path to store maintenance data
-MAINTENANCE_DATA_FILE = os.getenv("MAINTENANCE_DATA_FILE", os.path.join(_MCP_DIR, "data", "maintenance.json"))
-AUDIT_LOG_FILE = os.getenv("AUDIT_LOG_FILE", os.path.join(_MCP_DIR, "data", "audit.log"))
+MAINTENANCE_DATA_FILE = os.getenv(
+    "MAINTENANCE_DATA_FILE", os.path.join(_MCP_DIR, "data", "maintenance.json")
+)
+AUDIT_LOG_FILE = os.getenv(
+    "AUDIT_LOG_FILE", os.path.join(_MCP_DIR, "data", "audit.log")
+)
 
 # Maintenance intervals (in print hours)
 MAINTENANCE_INTERVALS = {
@@ -140,7 +149,9 @@ MAINTENANCE_INTERVALS = {
 # =============================================================================
 # LED SCENES
 # =============================================================================
-LED_SCENES_FILE = os.getenv("LED_SCENES_FILE", os.path.join(_MCP_DIR, "scenes", "led_scenes.json"))
+LED_SCENES_FILE = os.getenv(
+    "LED_SCENES_FILE", os.path.join(_MCP_DIR, "scenes", "led_scenes.json")
+)
 
 # Aliases for backward compatibility
 MAINTENANCE_LOG_PATH = MAINTENANCE_DATA_FILE
