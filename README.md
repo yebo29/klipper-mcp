@@ -203,8 +203,8 @@ This server exposes **100+ tools** for complete printer management, from basic o
 
 - Klipper + Moonraker running on your printer
 - Python 3.9+ on your CB1/Raspberry Pi
-- Network access between VS Code and printer
-- VS Code with GitHub Copilot (for Claude integration)
+- Network access between your client machine and the printer
+- An MCP-capable client — VS Code (Copilot), Claude Desktop, or Claude Code
 
 ### Quick Start (5 minutes)
 
@@ -214,24 +214,34 @@ ssh <user>@192.168.x.x  # or pi@192.168.x.x for Raspberry Pi
 
 # 2. Clone the repository
 cd ~
-git clone https://github.com/Charleslotto/klipper-mcp.git
+git clone https://github.com/yebo29/klipper-mcp.git
 cd klipper-mcp
 
 # 3. Create config from template
 cp config.example.py config.py
 
-# 4. Generate a secure API key and edit config
+# 4. Generate a secure API key
 python3 -c "import secrets; print(secrets.token_urlsafe(32))"
-nano config.py  # Paste the API key and adjust settings
 
-# 5. Run the installer
-chmod +x install.sh
+# 5. Generate a secure 6-digit admin PIN
+python3 -c "import secrets; print(secrets.randbelow(900000) + 100000)"
+
+# 6. Paste both into config.py and adjust any other settings
+nano config.py
+
+# 7. Run the installer (install.sh is already executable in this fork)
 ./install.sh
 
-# 6. Start the service
+# 8. Start the service
 sudo systemctl start klipper-mcp
 sudo systemctl enable klipper-mcp  # Auto-start on boot
 ```
+
+> **Why two secrets?** `API_KEY` authenticates every request to the server — without it, no
+> tool calls succeed. `ADMIN_PIN` is an *additional* gate that destructive operations
+> (file delete, config restore, system reboot) require on top of the key. Treat both like
+> passwords; the one-liners above use Python's `secrets` module so the output is
+> cryptographically random rather than something you'd reuse or guess.
 
 Add to Moonraker's `update_manager` config to auto-update MCP:
 
@@ -239,13 +249,17 @@ Add to Moonraker's `update_manager` config to auto-update MCP:
 [update_manager klipper-mcp]
 type: git_repo
 path: ~/klipper-mcp
-origin: https://github.com/Charleslotto/klipper-mcp.git
+origin: https://github.com/yebo29/klipper-mcp.git
 primary_branch: main
 managed_services: klipper-mcp
 requirements: requirements.txt
 env: ~/klipper-mcp/venv/bin/python
 install_script: install.sh
 ```
+
+Then add `klipper-mcp` as a line in `~/printer_data/moonraker.asvc` so Moonraker is
+allowed to restart the service after an update, and `sudo systemctl restart moonraker`
+to pick up the new section.
 
 ### Verify Installation
 
@@ -294,9 +308,149 @@ nano ~/klipper-mcp/config.py
 
 ---
 
-## Setting Up VS Code MCP Client
+## Reverse Proxy + HTTPS (Recommended)
 
-### Method 1: User Settings (Recommended)
+Running klipper-mcp directly on `http://<pi>:8000` is fine for a quick local test, but
+in practice you almost always want an HTTPS reverse proxy in front of it for two reasons:
+
+1. **TLS termination.** Claude Desktop's custom-connector flow *requires* HTTPS — it
+   will refuse a plain-HTTP URL outright. Other clients accept HTTP on a LAN but the
+   `X-API-Key` travels in cleartext, which is needlessly leaky.
+2. **Server-side auth injection.** A reverse proxy can add the `X-API-Key` header itself,
+   so the secret lives on your trusted server and never has to be configured in each
+   client. Clients just point at the HTTPS URL.
+
+The shape is: `Client → HTTPS → nginx (injects X-API-Key) → http://localhost:8000 → klipper-mcp`.
+
+### Prerequisites
+
+- A domain you control with a DNS record for the printer (e.g. `printer.example.com`).
+  Tailscale, Cloudflare Tunnel, or a LAN-only split-horizon DNS all work — the cert
+  authority just needs to be able to validate ownership.
+- TLS certificate. Let's Encrypt via DNS-01 is the most portable choice because it
+  works whether or not the printer is exposed to the public internet.
+
+### Option A: Raw nginx
+
+Save as `/etc/nginx/sites-available/klipper-mcp.conf` (adjust paths/domain):
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name printer.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;   # or the LAN IP if nginx is on a different host
+        proxy_http_version 1.1;
+
+        # Inject the API key server-side. Clients never need to know it.
+        proxy_set_header X-API-Key "<paste-your-API_KEY-here>";
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # MCP uses streaming JSON-RPC. Disable buffering so events flow through promptly.
+        proxy_buffering           off;
+        proxy_cache               off;
+        proxy_read_timeout        3600s;
+        proxy_send_timeout        3600s;
+        chunked_transfer_encoding off;
+
+        # Tune this up if you upload large G-code files via upload_gcode_file.
+        client_max_body_size 100m;
+    }
+}
+
+# Optional: redirect http -> https
+server {
+    listen 80;
+    server_name printer.example.com;
+    return 301 https://$host$request_uri;
+}
+```
+
+Enable and reload:
+
+```bash
+sudo ln -s /etc/nginx/sites-available/klipper-mcp.conf /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+### Option B: NGINX Proxy Manager (UI)
+
+If you're running [NGINX Proxy Manager](https://nginxproxymanager.com/):
+
+**Hosts → Proxy Hosts → Add Proxy Host**
+
+- **Domain Names**: `printer.example.com`
+- **Scheme**: `http`
+- **Forward Hostname/IP**: the Pi's IP (or hostname)
+- **Forward Port**: `8000`
+- **Cache Assets**: OFF
+- **Block Common Exploits**: OFF (its rules can interfere with JSON-RPC bodies)
+- **Websockets Support**: ON (sets `http_version 1.1` + `Upgrade`/`Connection` headers needed for MCP streaming)
+
+**SSL tab**
+
+- Pick an existing wildcard cert, or "Request a new SSL Certificate" via Let's Encrypt
+- **Force SSL**: ON
+- **HTTP/2 Support**: ON
+
+**Advanced tab** — paste:
+
+```nginx
+proxy_set_header X-API-Key "<paste-your-API_KEY-here>";
+
+proxy_buffering           off;
+proxy_cache               off;
+proxy_read_timeout        3600s;
+proxy_send_timeout        3600s;
+chunked_transfer_encoding off;
+client_max_body_size      100m;
+```
+
+Save. NPM reloads nginx automatically.
+
+### Verify
+
+From any client machine:
+
+```bash
+curl -sv https://printer.example.com/health 2>&1 | grep -E "HTTP|< [A-Za-z]"
+```
+
+Expect `HTTP/2 200`. You're not sending an `X-API-Key` — nginx injected it upstream.
+
+- `502 Bad Gateway` → nginx can't reach klipper-mcp. Check the forward host/port.
+- `401 Unauthorized` → header injection didn't land. Check the `proxy_set_header`
+  line for typos, quotes, and the trailing semicolon.
+- `Connection refused` → klipper-mcp is bound to `127.0.0.1`. Set `MCP_HOST = "0.0.0.0"`
+  in `config.py` (or run nginx on the same host as klipper-mcp and keep the bind local).
+
+### A note on trust boundary
+
+Injecting the API key at the proxy shifts authentication from "anyone with the key"
+to "anyone who can reach the nginx vhost." On a LAN that's an improvement. If the
+hostname is publicly resolvable, layer something on top: an `allow`/`deny` block for
+your LAN range, Cloudflare Access, Tailscale, or HTTP Basic auth in front of the
+location. Decide before the hostname goes live, not after.
+
+---
+
+## Setting Up MCP Clients
+
+The examples below use `https://printer.example.com/mcp` as the endpoint — that's
+the URL of your reverse proxy from the previous section. If you skipped the proxy
+and are connecting directly to the MCP server, swap in `http://<pi-ip>:8000/mcp`
+and add the `X-API-Key` header in the spots noted.
+
+### VS Code (Copilot)
 
 Add to your VS Code `settings.json` (`Ctrl+Shift+P` → "Preferences: Open User Settings (JSON)"):
 
@@ -306,70 +460,142 @@ Add to your VS Code `settings.json` (`Ctrl+Shift+P` → "Preferences: Open User 
     "servers": {
       "voron": {
         "type": "http",
-        "url": "http://192.168.x.x:8000/mcp",
-        "headers": {
-          "X-API-Key": "your-api-key-here"
-        }
+        "url": "https://printer.example.com/mcp"
       }
     }
   }
 }
 ```
 
-### Method 2: Workspace Config
-
-Create `.vscode/mcp.json` in your project:
-
-```json
-{
-  "mcpServers": {
-    "voron": {
-      "type": "http", 
-      "url": "http://192.168.x.x:8000/mcp",
-      "headers": {
-        "X-API-Key": "your-api-key-here"
-      }
-    }
-  }
-}
-```
-
-### Method 3: Multiple Printers
-
-Configure multiple printers in settings.json:
+If you're connecting *without* a reverse proxy, add an explicit header:
 
 ```json
 {
   "mcp": {
     "servers": {
-      "voron-2.4": {
+      "voron": {
         "type": "http",
-        "url": "http://192.168.1.100:8000/mcp",
-        "headers": { "X-API-Key": "key-for-voron" }
-      },
-      "voron-0.2": {
-        "type": "http",
-        "url": "http://192.168.1.101:8000/mcp",
-        "headers": { "X-API-Key": "key-for-v0" }
+        "url": "http://192.168.x.x:8000/mcp",
+        "headers": { "X-API-Key": "your-api-key-here" }
       }
     }
   }
 }
 ```
 
-### Verify Connection
+Prefer per-workspace config? Drop the same `mcpServers` block into `.vscode/mcp.json`.
 
-1. Open VS Code with Copilot
-2. Open the Copilot Chat panel
-3. Type: `@voron what's your status?`
-4. Claude should respond with your printer's status
+You can register multiple printers by adding more named servers:
 
-**Troubleshooting:**
+```json
+{
+  "mcp": {
+    "servers": {
+      "voron-2.4": { "type": "http", "url": "https://voron-24.example.com/mcp" },
+      "voron-0.2": { "type": "http", "url": "https://voron-02.example.com/mcp" }
+    }
+  }
+}
+```
 
-- Ensure the CB1/Pi IP address is reachable: `ping 192.168.x.x`
-- Check firewall allows port 8000: `sudo ufw allow 8000`
-- Verify API key matches exactly in VS Code and config.py
-- Check service is running: `sudo systemctl status klipper-mcp`
+In the Copilot Chat panel, address the printer by name: `@voron what's your status?`.
+
+### Claude Desktop
+
+**Important:** Claude Desktop's "Add custom connector" UI only accepts OAuth 2.1 +
+PKCE authentication (Dynamic Client Registration, Client ID Metadata Document, or
+Anthropic-held credentials). klipper-mcp uses a static `X-API-Key` header instead,
+so adding it through that UI will fail with a "Couldn't register with [name]'s
+sign-in service" error.
+
+The workaround is to use [`mcp-remote`](https://www.npmjs.com/package/mcp-remote)
+as a **stdio shim**. It runs locally on your machine, presents itself to Claude
+Desktop as a regular stdio MCP server (which Claude Desktop trusts without
+OAuth, the same way it trusts any local subprocess), and proxies to the remote
+HTTPS endpoint.
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or
+`%APPDATA%\Claude\claude_desktop_config.json` (Windows). Create it if it doesn't
+exist. Add (merging with anything already there):
+
+```json
+{
+  "mcpServers": {
+    "voron": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://printer.example.com/mcp"
+      ]
+    }
+  }
+}
+```
+
+If you're connecting *without* a reverse proxy and need to send the key client-side,
+use mcp-remote's `--header` flag (the `${VAR}` form works around a Claude Desktop
+quoting bug):
+
+```json
+{
+  "mcpServers": {
+    "voron": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "http://192.168.x.x:8000/mcp",
+        "--header", "X-API-Key:${API_KEY}"
+      ],
+      "env": { "API_KEY": "your-api-key-here" }
+    }
+  }
+}
+```
+
+**Restart Claude Desktop completely** (⌘Q on macOS, not just reload) — stdio MCPs
+are spawned at app launch. First invocation will install `mcp-remote` via `npx`
+and may take 10–20 seconds. Requires Node.js installed (`brew install node` on
+macOS, or your platform's equivalent).
+
+Debug logs land in `~/.mcp-auth/<server_hash>_debug.log` if something goes wrong.
+
+### Claude Code
+
+Claude Code natively supports HTTP MCP servers with custom headers, no shim needed.
+
+```bash
+# With reverse proxy (recommended)
+claude mcp add --transport http voron https://printer.example.com/mcp
+
+# Without reverse proxy — pass the key as a header
+claude mcp add --transport http voron http://192.168.x.x:8000/mcp \
+  --header "X-API-Key: your-api-key-here"
+```
+
+This writes the server into your Claude Code config. Confirm with:
+
+```bash
+claude mcp list
+```
+
+Then start a new Claude Code session and the `voron` tools will be available.
+
+### Verify the Connection
+
+Whatever client you're using, the smoke test is the same — ask for printer status:
+
+> "What's the voron's printer status?"
+
+A working setup returns current temperatures, position, homed axes, and the last
+print job. If the tools aren't available, check:
+
+- The Pi's address is reachable: `ping <pi-host>` from the client machine
+- The reverse proxy responds: `curl -v https://printer.example.com/health`
+- The MCP server is up: `sudo systemctl status klipper-mcp` on the Pi
+- Firewall allows the relevant port (8000 if direct, 443 if proxied)
+- API key matches in `config.py` and (if used) the client config
 
 ---
 
