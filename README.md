@@ -8,6 +8,9 @@ A fork of <https://github.com/Charleslotto/klipper-mcp> with the following updat
 - Update logging to use journald instead of a local file for better system integration and protections
 - install.sh now exectable by default
 - Added `moonraker` integration instructions to the README and adding to moonraker.asvc update to install.sh.
+- Added sections for NGINX SSL termination + config, NGINX Proxy Manager and Claude Desktop stdio shim to the README
+- Added instructions for VS Code and Claude Code clients to the README
+- Updated install instructions to include generating a secure API key and admin PIN, and added instructions for adding klipper-mcp to Moonraker's update_manager for auto-updates.
 
 A Model Context Protocol (MCP) server for controlling Klipper 3D printers via Moonraker API. Enables AI assistants like Claude to control your 3D printer through VS Code or any MCP-compatible client.
 
