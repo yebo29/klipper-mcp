@@ -28,7 +28,9 @@ if ! command -v python3 >/dev/null 2>&1; then
     echo "Error: python3 not found. Install Python 3.9+ and re-run." >&2
     exit 1
 fi
-PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+# Use %-formatting (not an f-string) so this prints cleanly even on Python < 3.6,
+# letting the version check below emit a friendly message instead of a SyntaxError.
+PYTHON_VERSION=$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')
 echo "Python version: $PYTHON_VERSION"
 if ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)'; then
     echo "Error: Python 3.9+ is required (found $PYTHON_VERSION)." >&2
