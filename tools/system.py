@@ -487,8 +487,9 @@ def register_system_tools(mcp):
                 {"error": "System reboot requires ARMED=True in config", "armed": False}
             )
 
-        # Round to the nearest minute, .5 rounding up, never scheduling sooner
-        # than requested (avoids round()'s banker's rounding on tie values).
+        # Round to the nearest minute, .5 rounding up (shutdown takes whole
+        # minutes). Integer arithmetic avoids round()'s banker's rounding, which
+        # rounds tie values (e.g. 150s) to an even minute and scheduled sooner.
         delay_minutes = max(1, (delay_seconds + 30) // 60)
 
         try:
@@ -532,8 +533,9 @@ def register_system_tools(mcp):
                 }
             )
 
-        # Round to the nearest minute, .5 rounding up, never scheduling sooner
-        # than requested (avoids round()'s banker's rounding on tie values).
+        # Round to the nearest minute, .5 rounding up (shutdown takes whole
+        # minutes). Integer arithmetic avoids round()'s banker's rounding, which
+        # rounds tie values (e.g. 150s) to an even minute and scheduled sooner.
         delay_minutes = max(1, (delay_seconds + 30) // 60)
 
         try:
