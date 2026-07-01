@@ -10,6 +10,23 @@ from typing import Optional
 import config
 from moonraker import get_client
 
+# Services klipper-mcp may query/restart, in canonical systemd unit form.
+_ALLOWED_SERVICES = [
+    "klipper",
+    "moonraker",
+    "KlipperScreen",
+    "crowsnest",
+    "klipper-mcp",
+]
+
+
+def _canonical_service(service: str):
+    """Match a user-supplied service name to the allowlist case-insensitively.
+
+    Returns the canonical systemd unit name, or None if the service is not allowed.
+    """
+    return next((s for s in _ALLOWED_SERVICES if s.lower() == service.lower()), None)
+
 
 def register_system_tools(mcp):
     """Register system management tools."""
@@ -348,26 +365,15 @@ def register_system_tools(mcp):
         Args:
             service: Service name or 'all' for all services (default: all)
         """
-        allowed_services = [
-            "klipper",
-            "moonraker",
-            "KlipperScreen",
-            "crowsnest",
-            "klipper-mcp",
-        ]
-
         if service.lower() == "all":
-            services = allowed_services
+            services = _ALLOWED_SERVICES
         else:
-            # Match case-insensitively but run the canonical systemd unit name
-            canonical = next(
-                (s for s in allowed_services if s.lower() == service.lower()), None
-            )
+            canonical = _canonical_service(service)
             if canonical is None:
                 return json.dumps(
                     {
                         "error": f"Service '{service}' not in allowlist",
-                        "allowed_services": allowed_services,
+                        "allowed_services": _ALLOWED_SERVICES,
                     }
                 )
             services = [canonical]
@@ -422,21 +428,15 @@ def register_system_tools(mcp):
         Args:
             service: Service to restart - 'klipper', 'moonraker', 'KlipperScreen', 'crowsnest'
         """
-        allowed_services = [
-            "klipper",
-            "moonraker",
-            "KlipperScreen",
-            "crowsnest",
-            "klipper-mcp",
-        ]
-
-        if service not in allowed_services:
+        canonical = _canonical_service(service)
+        if canonical is None:
             return json.dumps(
                 {
                     "error": f"Service '{service}' not allowed",
-                    "allowed_services": allowed_services,
+                    "allowed_services": _ALLOWED_SERVICES,
                 }
             )
+        service = canonical
 
         try:
             result = subprocess.run(
