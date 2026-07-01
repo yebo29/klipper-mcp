@@ -309,6 +309,37 @@ nano ~/klipper-mcp/config.py
 | `TOOL_COUNT` | Number of toolchanger tools |
 | `DISCORD_WEBHOOK_URL` | Discord notifications |
 
+#### Persistent environment variables (systemd override)
+
+Some settings are read from environment variables rather than `config.py`. Exporting
+them in your shell or `~/.bashrc` won't work: those die when your SSH session ends and
+are never seen by the service, which runs under systemd — not your login shell. To set
+variables that survive logoff **and** reboots, add a systemd drop-in override for the
+`klipper-mcp` unit.
+
+Example — enabling and pointing at Spoolman:
+
+```bash
+sudo systemctl edit klipper-mcp
+# Paste the following into the file that opens in the editor
+[Service]
+Environment="SPOOLMAN_ENABLED=true"
+Environment="SPOOLMAN_URL=https://spoolman.example.com"
+
+# Reload and apply
+sudo systemctl daemon-reload
+sudo systemctl restart klipper-mcp
+
+# Confirm
+sudo systemctl show klipper-mcp -p Environment
+# should list SPOOLMAN_ENABLED=true and SPOOLMAN_URL=https://...
+```
+
+`systemctl edit` writes the override to
+`/etc/systemd/system/klipper-mcp.service.d/override.conf`, leaving the shipped unit file
+untouched — so a package or `git pull` update won't clobber your settings. Add one
+`Environment="KEY=value"` line per variable.
+
 ---
 
 ## Reverse Proxy + HTTPS (Recommended)
