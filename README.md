@@ -22,7 +22,7 @@ This server exposes **100+ tools** for complete printer management, from basic o
 
 > 🔒 marks a **write tool** — one that changes printer or system state. Write
 > tools are never registered when `READ_ONLY=true` (see [Security](#security)),
-> and most also require `ARMED=true` and/or the admin PIN at call time.
+> and many also require `ARMED=true` and/or the admin PIN at call time.
 
 ### 🖨️ Core Printer Control
 

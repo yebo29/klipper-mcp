@@ -25,6 +25,13 @@ if ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)'; 
     echo "       aiohttp>=3.13 and python-dotenv>=1.1.1 do not support older versions." >&2
     exit 1
 fi
+# The venv module is needed to create the virtualenv below; on Debian/Ubuntu it
+# ships separately (python3-venv) and may be missing even when python3 is new.
+if ! python3 -c 'import venv' >/dev/null 2>&1; then
+    echo "Error: the Python 'venv' module is not available." >&2
+    echo "       Install it (e.g. 'sudo apt-get install python3-venv') and re-run." >&2
+    exit 1
+fi
 
 # Resolve the repo directory (where this script lives) and the running user.
 INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -55,7 +62,8 @@ pip install -r "$INSTALL_DIR/requirements.txt"
 # Create config from template if needed
 if [ ! -f "$INSTALL_DIR/config.py" ]; then
     echo "Creating default config.py..."
-    # The config.py should already be copied, but create if missing
+    # config.py lives in the repo working tree (gitignored); create it from the
+    # tracked example on first install. Existing config.py is left untouched.
     cp "$INSTALL_DIR/config.example.py" "$INSTALL_DIR/config.py"
 fi
 

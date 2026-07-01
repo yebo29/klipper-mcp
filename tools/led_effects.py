@@ -75,6 +75,10 @@ def _scene_commands(scene_config: dict) -> list:
     Prefers the "commands" format; falls back to translating the legacy
     "effects" format into SET_LED_EFFECT commands.
     """
+    if not isinstance(scene_config, dict):
+        # A malformed scenes file may map a name to a non-object value;
+        # treat it as having no commands rather than raising AttributeError.
+        return []
     commands_val = scene_config.get("commands")
     if isinstance(commands_val, list):
         # Keep only non-empty strings; drop null/number/object entries so they
@@ -221,6 +225,13 @@ def register_led_tools(mcp):
             )
 
         scene_config = scenes[scene]
+        if not isinstance(scene_config, dict):
+            return json.dumps(
+                {
+                    "error": f"Scene '{scene}' has an invalid configuration",
+                    "hint": "Each scene must be a JSON object with a 'commands' list",
+                }
+            )
         client = get_client()
 
         commands = _scene_commands(scene_config)
