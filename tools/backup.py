@@ -99,7 +99,7 @@ def register_backup_tools(mcp):
                 "backup_path": os.path.join(config.BACKUP_PATH, backup_name),
                 "files_backed_up": backed_up_files,
                 "file_count": len(backed_up_files),
-                "failed_files": failed_files if failed_files else None,
+                "failed_files": failed_files,
             },
             indent=2,
         )
