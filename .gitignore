@@ -45,6 +45,10 @@ backups/*.zip
 # Config with secrets - IMPORTANT: Use config.example.py as template
 config.py
 
+# Env file with secrets - IMPORTANT: Use .env.example as template
+.env
+!.env.example
+
 # OS files
 .DS_Store
 Thumbs.db
