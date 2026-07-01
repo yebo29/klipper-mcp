@@ -488,6 +488,14 @@ def register_system_tools(mcp):
                 {"error": "System reboot requires ARMED=True in config", "armed": False}
             )
 
+        if delay_seconds < 0:
+            return json.dumps(
+                {
+                    "error": "delay_seconds must be non-negative",
+                    "delay_seconds": delay_seconds,
+                }
+            )
+
         # Round to the nearest minute, .5 rounding up (shutdown takes whole
         # minutes). Integer arithmetic avoids round()'s banker's rounding, which
         # rounds tie values (e.g. 150s) to an even minute and scheduled sooner.
@@ -532,6 +540,14 @@ def register_system_tools(mcp):
                 {
                     "error": "System shutdown requires ARMED=True in config",
                     "armed": False,
+                }
+            )
+
+        if delay_seconds < 0:
+            return json.dumps(
+                {
+                    "error": "delay_seconds must be non-negative",
+                    "delay_seconds": delay_seconds,
                 }
             )
 
