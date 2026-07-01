@@ -25,9 +25,10 @@ def register_toolchanger_tools(mcp):
                 {"error": "System not ARMED. Tool changes require ARMED=true."}
             )
 
-        if tool_number < 0 or tool_number >= config.TOOL_COUNT:
+        tool_count = getattr(config, "TOOL_COUNT", 1)
+        if tool_number < 0 or tool_number >= tool_count:
             return json.dumps(
-                {"error": f"Invalid tool {tool_number}. Valid: 0-{config.TOOL_COUNT-1}"}
+                {"error": f"Invalid tool {tool_number}. Valid: 0-{tool_count - 1}"}
             )
 
         client = get_client()
@@ -36,7 +37,9 @@ def register_toolchanger_tools(mcp):
         if "error" in result:
             return json.dumps({"error": result["error"]})
 
-        tool_name = config.TOOL_NAMES.get(tool_number, f"T{tool_number}")
+        tool_name = getattr(config, "TOOL_NAMES", {}).get(
+            tool_number, f"T{tool_number}"
+        )
         return json.dumps(
             {"success": True, "active_tool": tool_number, "name": tool_name}
         )
@@ -69,9 +72,9 @@ def register_toolchanger_tools(mcp):
         return json.dumps(
             {
                 "active_tool": current,
-                "name": config.TOOL_NAMES.get(current, f"T{current}"),
+                "name": getattr(config, "TOOL_NAMES", {}).get(current, f"T{current}"),
                 "available_tools": toolchanger.get(
-                    "tool_numbers", list(range(config.TOOL_COUNT))
+                    "tool_numbers", list(range(getattr(config, "TOOL_COUNT", 1)))
                 ),
             }
         )
@@ -101,7 +104,7 @@ def register_toolchanger_tools(mcp):
 
         # Query all tool objects
         objects = {}
-        for i in range(config.TOOL_COUNT):
+        for i in range(getattr(config, "TOOL_COUNT", 1)):
             tool_name = f"tool T{i}" if i > 0 else "tool T0"
             objects[tool_name] = ["gcode_x_offset", "gcode_y_offset", "gcode_z_offset"]
             objects[f"tool_probe T{i}"] = ["x_offset", "y_offset", "z_offset"]
@@ -114,7 +117,7 @@ def register_toolchanger_tools(mcp):
         status = result.get("result", {}).get("status", {})
 
         offsets = {}
-        for i in range(config.TOOL_COUNT):
+        for i in range(getattr(config, "TOOL_COUNT", 1)):
             tool_key = f"tool T{i}"
             probe_key = f"tool_probe T{i}"
 
@@ -148,7 +151,7 @@ def register_toolchanger_tools(mcp):
         if not config.ARMED:
             return json.dumps({"error": "System not ARMED."})
 
-        if tool_number < 0 or tool_number >= config.TOOL_COUNT:
+        if tool_number < 0 or tool_number >= getattr(config, "TOOL_COUNT", 1):
             return json.dumps({"error": f"Invalid tool {tool_number}"})
 
         client = get_client()
@@ -271,7 +274,7 @@ def register_toolchanger_tools(mcp):
         if not config.ARMED:
             return json.dumps({"error": "System not ARMED."})
 
-        if tool_number < 0 or tool_number >= config.TOOL_COUNT:
+        if tool_number < 0 or tool_number >= getattr(config, "TOOL_COUNT", 1):
             return json.dumps({"error": f"Invalid tool {tool_number}"})
 
         client = get_client()
@@ -295,7 +298,7 @@ def register_toolchanger_tools(mcp):
         if not config.ARMED:
             return json.dumps({"error": "System not ARMED."})
 
-        if tool_number < 0 or tool_number >= config.TOOL_COUNT:
+        if tool_number < 0 or tool_number >= getattr(config, "TOOL_COUNT", 1):
             return json.dumps({"error": f"Invalid tool {tool_number}"})
 
         if target < 0 or target > 350:

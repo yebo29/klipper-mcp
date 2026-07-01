@@ -8,6 +8,7 @@ import re
 from typing import Optional
 import config
 from moonraker import get_client
+from ._util import format_duration
 
 
 def register_gcode_analysis_tools(mcp):
@@ -38,7 +39,9 @@ def register_gcode_analysis_tools(mcp):
                 "version": meta.get("slicer_version"),
             },
             "print_estimates": {
-                "estimated_time": format_time(meta.get("estimated_time")),
+                "estimated_time": format_duration(
+                    meta.get("estimated_time"), empty="unknown"
+                ),
                 "layer_count": meta.get("layer_count"),
                 "first_layer_height": meta.get("first_layer_height"),
                 "layer_height": meta.get("layer_height"),
@@ -54,8 +57,8 @@ def register_gcode_analysis_tools(mcp):
             "temperatures": {
                 "first_layer_extruder": meta.get("first_layer_extr_temp"),
                 "first_layer_bed": meta.get("first_layer_bed_temp"),
-                "extruder": meta.get("nozzle_diameter"),
             },
+            "nozzle_diameter": meta.get("nozzle_diameter"),
             "speeds": {
                 "max_speed": meta.get("max_speed"),
                 "max_accel": meta.get("max_accel"),
@@ -441,18 +444,3 @@ def register_gcode_analysis_tools(mcp):
             },
             indent=2,
         )
-
-
-def format_time(seconds: float) -> str:
-    """Format seconds into human-readable time."""
-    if not seconds:
-        return "unknown"
-
-    seconds = int(seconds)
-    hours = seconds // 3600
-    minutes = (seconds % 3600) // 60
-
-    if hours > 0:
-        return f"{hours}h {minutes}m"
-    else:
-        return f"{minutes}m"

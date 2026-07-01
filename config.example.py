@@ -31,6 +31,10 @@ if load_dotenv is not None:
 # URL to your Moonraker instance (usually localhost if running on same machine)
 MOONRAKER_URL = os.getenv("MOONRAKER_URL", "http://localhost:7125")
 
+# Optional Moonraker API key (required only if Moonraker has auth enabled).
+# Generate in Moonraker settings, or leave empty for trusted local connections.
+MOONRAKER_API_KEY = os.getenv("MOONRAKER_API_KEY", "")
+
 # Display name for your printer
 PRINTER_NAME = "Voron"
 
@@ -106,7 +110,7 @@ SPOOLMAN_URL = os.getenv("SPOOLMAN_URL", "http://localhost:7912")
 # ntfy.sh - free, self-hostable push notifications
 NTFY_ENABLED = os.getenv("NTFY_ENABLED", "false").lower() == "true"
 NTFY_URL = os.getenv("NTFY_URL", "https://ntfy.sh")
-NTFY_TOPIC = os.getenv("NTFY_TOPIC", "voron-printer")
+NTFY_TOPIC = os.getenv("NTFY_TOPIC", PRINTER_NAME.lower().replace(" ", "-"))
 
 # Discord webhook
 DISCORD_ENABLED = os.getenv("DISCORD_ENABLED", "false").lower() == "true"
