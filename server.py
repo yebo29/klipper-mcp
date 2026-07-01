@@ -1065,6 +1065,18 @@ async def handle_mcp(request: web.Request) -> web.Response:
             status=400,
         )
 
+    # A valid JSON-RPC request is a single object. Batches (a top-level list) are
+    # not supported, and any other non-object value is an Invalid Request.
+    if not isinstance(data, dict):
+        return web.json_response(
+            {
+                "jsonrpc": "2.0",
+                "error": {"code": -32600, "message": "Invalid Request"},
+                "id": None,
+            },
+            status=400,
+        )
+
     method = data.get("method", "")
     params = data.get("params", {})
     request_id = data.get("id")
