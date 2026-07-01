@@ -40,7 +40,10 @@ echo "Directory: ${SPOOLMAN_DIR}"
 # OK because the uv fallback below handles old Python without needing it.
 echo "Installing dependencies..."
 sudo apt-get update
-sudo apt-get install -y python3 python3-pip unzip curl || true
+# Core deps are required — let a failure abort (set -e) rather than surface later
+# as a confusing "command not found". python3-venv is optional (uv fallback
+# covers old Python), so only its install is allowed to fail.
+sudo apt-get install -y python3 python3-pip unzip curl
 sudo apt-get install -y python3-venv 2>/dev/null || true
 
 # Create directory

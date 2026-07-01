@@ -71,7 +71,7 @@ def register_diagnostics_tools(mcp):
                     ):
                         errors.append(
                             {
-                                "line": len(all_lines) - lines + i + 1,
+                                "line": len(all_lines) - len(recent_lines) + i + 1,
                                 "text": line.strip(),
                             }
                         )
@@ -82,7 +82,7 @@ def register_diagnostics_tools(mcp):
                     ):
                         warnings.append(
                             {
-                                "line": len(all_lines) - lines + i + 1,
+                                "line": len(all_lines) - len(recent_lines) + i + 1,
                                 "text": line.strip(),
                             }
                         )
@@ -91,7 +91,7 @@ def register_diagnostics_tools(mcp):
                     elif "shutdown" in line_lower:
                         shutdowns.append(
                             {
-                                "line": len(all_lines) - lines + i + 1,
+                                "line": len(all_lines) - len(recent_lines) + i + 1,
                                 "text": line.strip(),
                             }
                         )
@@ -108,7 +108,7 @@ def register_diagnostics_tools(mcp):
                     ):
                         tmc_errors.append(
                             {
-                                "line": len(all_lines) - lines + i + 1,
+                                "line": len(all_lines) - len(recent_lines) + i + 1,
                                 "text": line.strip(),
                             }
                         )
@@ -125,7 +125,7 @@ def register_diagnostics_tools(mcp):
                     ):
                         mcu_issues.append(
                             {
-                                "line": len(all_lines) - lines + i + 1,
+                                "line": len(all_lines) - len(recent_lines) + i + 1,
                                 "text": line.strip(),
                             }
                         )

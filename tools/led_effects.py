@@ -77,7 +77,9 @@ def _scene_commands(scene_config: dict) -> list:
     """
     commands_val = scene_config.get("commands")
     if isinstance(commands_val, list):
-        return list(commands_val)
+        # Keep only non-empty strings; drop null/number/object entries so they
+        # can't be passed through to run_gcode as bogus commands.
+        return [c for c in commands_val if isinstance(c, str) and c.strip()]
 
     effects = scene_config.get("effects")
     if not isinstance(effects, list):
