@@ -223,12 +223,17 @@ def register_led_tools(mcp):
 
         commands = _scene_commands(scene_config)
         if not commands:
-            return json.dumps(
-                {
-                    "error": f"Scene '{scene}' has no commands defined",
-                    "hint": "Add a 'commands' list to the scene in led_scenes.json",
-                }
-            )
+            # Backward compat: a legacy "off" scene (e.g. {"effects": []}) has no
+            # derived commands but is meant to stop everything.
+            if scene == "off":
+                commands = ["STOP_LED_EFFECTS"]
+            else:
+                return json.dumps(
+                    {
+                        "error": f"Scene '{scene}' has no commands defined",
+                        "hint": "Add a 'commands' list to the scene in led_scenes.json",
+                    }
+                )
 
         # Run each raw G-code command in order
         results = []

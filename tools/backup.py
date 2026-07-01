@@ -56,7 +56,6 @@ def register_backup_tools(mcp):
         # Create backup directory name
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_name = backup_name or f"backup_{timestamp}"
-        backup_dir = f"config_backups/{backup_name}"
 
         backed_up_files = []
         failed_files = []
