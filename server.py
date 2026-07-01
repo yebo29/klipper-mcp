@@ -161,28 +161,31 @@ def parse_docstring_args(docstring: str) -> dict:
     args = {}
     current_key = None
     in_args = False
+    args_indent = 0
+    param_indent = None
     for line in docstring.split("\n"):
         stripped = line.strip()
-        if stripped == "Args:":
-            in_args = True
-            continue
         if not in_args:
+            if stripped == "Args:":
+                in_args = True
+                args_indent = len(line) - len(line.lstrip())
             continue
-        if stripped in (
-            "Returns:",
-            "Raises:",
-            "Note:",
-            "Notes:",
-            "Example:",
-            "Examples:",
-        ):
+        if not stripped:
+            continue
+        indent = len(line) - len(line.lstrip())
+        # A non-empty line indented at or below "Args:" ends the section — this
+        # covers the next section header ("Returns:", "Raises:", ...) as well as
+        # trailing prose that has no colon (e.g. "Returns list of files...").
+        if indent <= args_indent:
             break
         match = re.match(r"^(\w+):\s+(.+)$", stripped)
-        if match:
+        # A parameter line sits at the shallowest in-section indent; anything more
+        # indented is a wrapped continuation of the current parameter.
+        if match and (param_indent is None or indent <= param_indent):
+            param_indent = indent
             current_key = match.group(1)
             args[current_key] = match.group(2)
-        elif stripped and current_key:
-            # Indented continuation line — append to the current param's description
+        elif current_key:
             args[current_key] += " " + stripped
     return args
 
