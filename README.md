@@ -20,91 +20,100 @@ This server exposes **100+ tools** for complete printer management, from basic o
 
 ## Features
 
+> 🔒 marks a **write tool** — one that changes printer or system state. Write
+> tools are never registered when `READ_ONLY=true` (see [Security](#security)),
+> and most also require `ARMED=true` and/or the admin PIN at call time.
+
 ### 🖨️ Core Printer Control
 
 | Tool | Description |
 | ------ | ------------- |
 | `get_printer_status` | Full status including temps, position, state |
-| `run_gcode` | Execute any G-code command |
-| `start_print` | Start a print job |
-| `pause_print` / `resume_print` | Print flow control |
-| `cancel_print` | Cancel current print |
-| `home_axes` | Home X/Y/Z or all axes |
-| `emergency_stop` | Immediate halt |
-| `restart_klipper` | Firmware restart |
-| `quad_gantry_level` | Run QGL procedure |
-| `set_heater_temperature` | Set hotend/bed temps |
+| `get_temperatures` | Current temperatures for all heaters |
+| `get_server_info` | Moonraker server info and version |
+| `set_temperature` 🔒 | Set a heater (hotend/bed) target temp |
+| `run_gcode` 🔒 | Execute any G-code command |
+| `home_printer` 🔒 | Home X/Y/Z or all axes |
+| `start_print` 🔒 | Start a print job |
+| `pause_print` / `resume_print` 🔒 | Print flow control |
+| `cancel_print` 🔒 | Cancel current print |
+| `restart_klipper` 🔒 | Firmware restart |
+| `emergency_stop` 🔒 | Immediate halt (requires admin PIN) |
 
 ### 🔧 StealthChanger / Toolchanger Support
 
 | Tool | Description |
 | ------ | ------------- |
 | `get_active_tool` | Current tool status |
-| `select_tool` | Pick up tool (T0-T5) |
-| `drop_tool` | Return tool to dock |
-| `initialize_toolchanger` | Run init sequence |
 | `get_tool_offsets` | Tool offset values |
-| `start_tool_alignment` | Alignment workflow |
-| `test_dock_undock` | Test docking operations |
-| `disable_crash_detection` | Disable during testing |
+| `get_dock_positions` | Configured dock positions |
+| `select_tool` 🔒 | Activate a tool (T0–TN) |
+| `pickup_tool` / `dropoff_tool` 🔒 | Pick up / return tool to dock |
+| `initialize_toolchanger` 🔒 | Run init sequence |
+| `tool_align_start` / `tool_align_test` / `tool_align_done` 🔒 | Alignment workflow |
+| `start_crash_detection` / `stop_crash_detection` 🔒 | Crash detection control |
+| `set_tool_temperature` 🔒 | Set a tool's extruder temp |
+| `quad_gantry_level` 🔒 | Run QGL procedure |
 
 ### ⚡ TMC Stepper Driver Control
 
 | Tool | Description |
 | ------ | ------------- |
 | `get_tmc_status` | Driver status, currents, temps |
-| `set_tmc_current` | Adjust run/hold current |
 | `dump_tmc_registers` | Register diagnostics |
-| `get_tmc_field` / `set_tmc_field` | Direct register access |
+| `get_tmc_field` | Read a register field |
 | `get_autotune_status` | TMC Autotune configuration |
 | `list_tmc_steppers` | All TMC-equipped steppers |
+| `set_tmc_current` 🔒 | Adjust run/hold current |
+| `set_tmc_field` 🔒 | Write a register field |
 
 ### 💡 LED Effects (klipper-led_effect)
 
 | Tool | Description |
 | ------ | ------------- |
-| `list_led_effects` | Available effects |
-| `set_led_effect` | Activate an effect |
-| `stop_led_effect` / `stop_all_effects` | Stop effects |
-| `set_led_color` | Direct RGB/RGBW control |
+| `list_led_effects` | Common effect names |
 | `list_led_scenes` | Preset scenes |
-| `activate_led_scene` | Apply scene preset |
+| `set_led_effect` 🔒 | Activate an effect |
+| `stop_led_effect` / `stop_all_led_effects` 🔒 | Stop effects |
+| `set_led_direct` 🔒 | Direct RGB/RGBW control |
+| `set_led_scene` 🔒 | Apply a scene preset |
 
 ### 📁 File Operations
 
 | Tool | Description |
 | ------ | ------------- |
+| `list_files` | List any printer directory |
 | `list_gcode_files` | Browse G-code files |
-| `get_file_metadata` | Slicer settings, thumbnails |
-| `read_gcode_file` | Read file contents |
-| `upload_gcode_file` | Upload new files |
-| `delete_gcode_file` | Remove files |
-| `search_in_file` | Search file contents |
 | `list_config_files` | Klipper config files |
-| `read_config_file` | Read printer.cfg etc. |
+| `read_file` | Read file contents (config/logs/etc.) |
+| `get_gcode_metadata` | Slicer settings, thumbnails |
+| `search_in_file` | Search file contents |
+| `write_file` 🔒 | Write a file (requires admin PIN) |
+| `delete_file` 🔒 | Delete a file (requires admin PIN) |
 
 ### 📷 Camera & Timelapse
 
 | Tool | Description |
 | ------ | ------------- |
-| `get_camera_snapshot` | Capture current frame |
+| `capture_snapshot` | Capture current frame (base64) |
 | `get_camera_stream_url` | MJPEG stream URL |
 | `get_timelapse_settings` | Current timelapse config |
-| `set_timelapse_enabled` | Enable/disable timelapse |
-| `capture_timelapse_frame` | Manual frame capture |
-| `render_timelapse` | Trigger video render |
-| `configure_timelapse` | Adjust settings |
+| `list_timelapses` | Rendered timelapse videos |
+| `set_timelapse_enabled` 🔒 | Enable/disable timelapse |
+| `configure_timelapse` 🔒 | Adjust settings |
+| `take_timelapse_frame` 🔒 | Manual frame capture |
+| `render_timelapse` 🔒 | Trigger video render |
 
 ### 📊 Print Statistics
 
 | Tool | Description |
 | ------ | ------------- |
 | `get_print_history` | Past prints with filtering |
-| `get_print_stats` | Cumulative statistics |
-| `get_filament_usage_by_material` | Usage breakdown |
-| `get_recent_prints` | Last N prints summary |
+| `get_print_totals` | Cumulative statistics |
+| `get_job_details` | Details of a single job |
+| `get_filament_usage_summary` | Filament usage summary |
+| `get_recent_prints` | Prints in the last N hours |
 | `get_average_print_stats` | Average metrics |
-| `export_printer_data` | Export all data to JSON |
 
 ### 🔍 Diagnostics & Troubleshooting
 
@@ -112,53 +121,53 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | ------ | ------------- |
 | `parse_klippy_log` | Analyze log for issues |
 | `get_recent_errors` | Recent errors with context |
-| `get_log_summary` | Log overview |
-| `check_common_issues` | Config problem detection |
+| `get_log_summary` | Log activity overview |
+| `get_log_files` | List log files with sizes |
+| `check_common_issues` | Config/state problem detection |
 | `get_mcu_status` | MCU info and timing |
-| `get_gcode_history` | Recent G-code commands |
-| `get_troubleshooting_guide` | Problem-specific help |
-| `analyze_print_failure` | Failure diagnosis |
-| `check_config_issues` | Configuration validation |
-| `get_system_performance` | CPU, memory, disk stats |
+| `get_gcode_history` | Recent G-code responses |
+| `diagnose_problem` | Symptom-based troubleshooting |
+| `clear_old_logs` 🔒 | Delete old log files |
+| `truncate_log` 🔒 | Truncate a log file |
 
 ### 🌡️ Temperature & Bed Mesh
 
 | Tool | Description |
 | ------ | ------------- |
-| `get_temperatures` | All heater temperatures |
 | `get_temperature_history` | Historical temp data |
-| `analyze_temperature_data` | Anomaly detection |
-| `set_temperature_alert` | Threshold alerts |
-| `run_bed_mesh_calibrate` | Run bed mesh |
+| `detect_temperature_anomalies` | Anomaly detection |
+| `get_bed_mesh` | Current mesh and statistics |
 | `get_bed_mesh_profiles` | List saved meshes |
-| `load_bed_mesh` | Load a mesh profile |
-| `save_bed_mesh` | Save current mesh |
-| `clear_bed_mesh` | Remove active mesh |
+| `get_heater_pid_params` | PID parameters for a heater |
+| `load_bed_mesh_profile` 🔒 | Load a mesh profile |
+| `calibrate_bed_mesh` 🔒 | Run bed mesh calibration |
+| `save_bed_mesh_profile` 🔒 | Save current mesh |
+| `clear_bed_mesh` 🔒 | Clear active mesh |
 
 ### 🧵 Spoolman Integration
 
 | Tool | Description |
 | ------ | ------------- |
 | `list_spools` | All tracked spools |
-| `get_active_spool` | Currently loaded spool |
-| `set_active_spool` | Set spool for tool |
 | `get_spool_details` | Full spool info |
-| `check_low_filament` | Low filament warnings |
-| `get_filament_usage_by_material` | Material statistics |
-| `list_vendors` | Filament vendors |
-| `list_filaments` | Filament database |
+| `get_active_spool` | Currently loaded spool |
+| `get_filament_vendors` | Filament vendors |
+| `get_low_filament_spools` | Low filament warnings |
+| `get_filament_usage_by_material` | Material usage statistics |
+| `set_active_spool` 🔒 | Set the active spool |
+| `clear_active_spool` 🔒 | Clear the active spool |
 
 ### 🔔 Notifications
 
 | Tool | Description |
 | ------ | ------------- |
-| `send_notification` | Multi-channel notify |
-| `send_discord_notification` | Discord webhook |
-| `send_slack_notification` | Slack webhook |
-| `send_pushover_notification` | Pushover push |
-| `announce_tts` | Text-to-speech |
-| `test_notifications` | Test all channels |
-| `get_notification_settings` | Current config |
+| `get_notification_config` | Current notification config |
+| `send_notification` 🔒 | Multi-channel notify (Discord/Slack/Pushover/Moonraker) |
+| `announce_tts` 🔒 | Text-to-speech announcement |
+| `notify_print_complete` 🔒 | Print completion alert |
+| `notify_temperature_alert` 🔒 | Temperature alert |
+| `console_message` 🔒 | Post to Mainsail/Fluidd console |
+| `test_notifications` 🔒 | Test all channels |
 
 ### 💾 Backup & Maintenance
 
@@ -166,23 +175,23 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | ------ | ------------- |
 | `backup_config` | Backup all configs |
 | `list_backups` | Available backups |
-| `restore_config` | Restore from backup |
 | `check_maintenance_due` | Maintenance alerts |
-| `log_maintenance` | Record maintenance |
 | `get_maintenance_history` | Maintenance log |
 | `get_audit_log` | Security audit trail |
-| `export_printer_data` | Full data export |
+| `export_printer_data` | Full data export to JSON |
+| `restore_config` 🔒 | Restore from backup (requires admin PIN) |
+| `log_maintenance` 🔒 | Record a maintenance action |
 
 ### 📝 G-code Analysis
 
 | Tool | Description |
 | ------ | ------------- |
 | `analyze_gcode_file` | Full file analysis |
-| `validate_gcode` | Check for issues |
+| `validate_gcode` | Check for common issues |
 | `extract_gcode_comments` | Slicer comments |
-| `get_gcode_moves` | Movement statistics |
-| `extract_layer` | Get specific layer |
-| `compare_gcode_files` | Diff two files |
+| `get_gcode_move_stats` | Movement statistics |
+| `get_layer_gcode` | Extract a specific layer |
+| `find_gcode_section` | Find text within a file |
 
 ### 🖥️ System Management
 
@@ -191,14 +200,14 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `get_system_info` | CPU, memory, disk, temp |
 | `get_network_info` | IP addresses, WiFi |
 | `check_updates` | Available updates |
-| `update_component` | Update Klipper/Moonraker |
-| `refresh_update_status` | Check repos |
 | `get_service_status` | Service states |
-| `restart_service` | Restart services |
-| `reboot_system` | System reboot |
-| `shutdown_system` | System shutdown |
 | `get_moonraker_config` | Moonraker info |
 | `get_printer_objects` | Available Klipper objects |
+| `update_component` 🔒 | Update Klipper/Moonraker/etc. |
+| `refresh_update_status` 🔒 | Refresh update status from repos |
+| `restart_service` 🔒 | Restart a service |
+| `reboot_system` 🔒 | System reboot (requires ARMED) |
+| `shutdown_system` 🔒 | System shutdown (requires ARMED) |
 
 ## Installation
 

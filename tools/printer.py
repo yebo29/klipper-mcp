@@ -15,7 +15,7 @@ def register_printer_tools(mcp):
     @mcp.tool()
     async def get_printer_status() -> str:
         """
-        Get comprehensive Voron printer status including temperatures,
+        Get comprehensive printer status including temperatures,
         position, print state, and progress.
         """
         client = get_client()

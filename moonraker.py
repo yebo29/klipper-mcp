@@ -14,13 +14,17 @@ class MoonrakerClient:
 
     def __init__(self, base_url: str = None):
         self.base_url = (base_url or config.MOONRAKER_URL).rstrip("/")
+        self.api_key = getattr(config, "MOONRAKER_API_KEY", "")
         self._session: Optional[aiohttp.ClientSession] = None
 
     async def _get_session(self) -> aiohttp.ClientSession:
         """Get or create aiohttp session."""
         if self._session is None or self._session.closed:
             timeout = aiohttp.ClientTimeout(total=30)
-            self._session = aiohttp.ClientSession(timeout=timeout)
+            headers = {}
+            if self.api_key:
+                headers["X-Api-Key"] = self.api_key
+            self._session = aiohttp.ClientSession(timeout=timeout, headers=headers)
         return self._session
 
     async def close(self):
@@ -35,8 +39,9 @@ class MoonrakerClient:
         params: Dict = None,
         json_data: Dict = None,
         data: Any = None,
+        _retry: int = 1,
     ) -> Dict:
-        """Make HTTP request to Moonraker."""
+        """Make HTTP request to Moonraker, with one automatic reconnect on connection failure."""
         session = await self._get_session()
         url = f"{self.base_url}{endpoint}"
 
@@ -46,6 +51,20 @@ class MoonrakerClient:
             ) as response:
                 response.raise_for_status()
                 return await response.json()
+        except aiohttp.ClientConnectorError:
+            if _retry > 0:
+                # Moonraker may have restarted — reset session and retry once
+                await self.close()
+                await asyncio.sleep(1)
+                return await self._request(
+                    method,
+                    endpoint,
+                    params=params,
+                    json_data=json_data,
+                    data=data,
+                    _retry=_retry - 1,
+                )
+            return {"error": "Cannot connect to Moonraker. Is it running?"}
         except aiohttp.ClientError as e:
             return {"error": str(e)}
 
@@ -80,7 +99,7 @@ class MoonrakerClient:
         return await self.post("/printer/objects/query", json_data={"objects": objects})
 
     async def get_printer_status(self) -> Dict:
-        """Get comprehensive printer status."""
+        """Get comprehensive printer status, including all configured extruders."""
         objects = {
             "heater_bed": ["temperature", "target", "power"],
             "extruder": ["temperature", "target", "power", "pressure_advance"],
@@ -103,6 +122,9 @@ class MoonrakerClient:
             "fan": ["speed"],
             "idle_timeout": ["state", "printing_time"],
         }
+        # Include additional extruders for multi-tool setups
+        for i in range(1, getattr(config, "TOOL_COUNT", 1)):
+            objects[f"extruder{i}"] = ["temperature", "target", "power"]
         return await self.query_printer_objects(objects)
 
     # =========================================================================
@@ -230,8 +252,8 @@ class MoonrakerClient:
         """Get list of configured webcams."""
         return await self.get("/server/webcams/list")
 
-    async def get_webcam_snapshot(self, webcam_name: str = None) -> bytes:
-        """Get webcam snapshot as bytes."""
+    async def get_webcam_snapshot(self) -> bytes:
+        """Get webcam snapshot as bytes using the configured snapshot URL."""
         session = await self._get_session()
         url = config.CAMERA_SNAPSHOT_URL
 
@@ -239,7 +261,7 @@ class MoonrakerClient:
             async with session.get(url) as response:
                 response.raise_for_status()
                 return await response.read()
-        except aiohttp.ClientError as e:
+        except aiohttp.ClientError:
             return None
 
     # =========================================================================
