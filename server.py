@@ -376,6 +376,9 @@ async def handle_server_info(request: web.Request) -> web.Response:
             "tools_count": len(TOOLS),
             "features": {
                 "toolchanger": getattr(config, "TOOL_COUNT", 1) > 1,
+                # Deprecated alias of "toolchanger"; kept for backward
+                # compatibility with clients that read the old flag.
+                "stealthchanger": getattr(config, "TOOL_COUNT", 1) > 1,
                 "tool_count": getattr(config, "TOOL_COUNT", 1),
                 "led_effects": True,
                 "spoolman": config.SPOOLMAN_ENABLED,

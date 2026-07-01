@@ -9,6 +9,16 @@
 
 set -e
 
+# Run as the normal printer user, not root. The service should run unprivileged;
+# this script calls sudo itself only where root is actually required (systemd,
+# log/unit files). Running the whole thing as root would install the unit as
+# User=root and leave the repo venv/files root-owned.
+if [ "$(id -u)" -eq 0 ]; then
+    echo "Please run this script as your normal user, not as root/sudo." >&2
+    echo "It will prompt for sudo only when needed." >&2
+    exit 1
+fi
+
 echo "=========================================="
 echo "Klipper MCP Server Installer"
 echo "=========================================="
