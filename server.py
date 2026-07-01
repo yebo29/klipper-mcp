@@ -375,8 +375,8 @@ async def handle_server_info(request: web.Request) -> web.Response:
             "read_only": getattr(config, "READ_ONLY", False),
             "tools_count": len(TOOLS),
             "features": {
-                "toolchanger": config.TOOL_COUNT > 1,
-                "tool_count": config.TOOL_COUNT,
+                "toolchanger": getattr(config, "TOOL_COUNT", 1) > 1,
+                "tool_count": getattr(config, "TOOL_COUNT", 1),
                 "led_effects": True,
                 "spoolman": config.SPOOLMAN_ENABLED,
                 "tts": config.TTS_ENABLED,
@@ -461,7 +461,7 @@ async def handle_server_info_html(request: web.Request) -> web.Response:
     <section>
         <h2>Features</h2>
         <dl>
-            <dt>Toolchanger</dt><dd><span class="{"status-ok" if config.TOOL_COUNT > 1 else ""}">{config.TOOL_COUNT} tool(s)</span></dd>
+            <dt>Toolchanger</dt><dd><span class="{"status-ok" if getattr(config, "TOOL_COUNT", 1) > 1 else ""}">{getattr(config, "TOOL_COUNT", 1)} tool(s)</span></dd>
             <dt>LED Effects</dt><dd><span class="status-ok">Enabled</span></dd>
             <dt>Spoolman</dt><dd><span class="{"status-ok" if config.SPOOLMAN_ENABLED else "status-error"}">{config.SPOOLMAN_ENABLED}</span></dd>
             <dt>TTS Notifications</dt><dd><span class="{"status-ok" if config.TTS_ENABLED else "status-error"}">{config.TTS_ENABLED}</span></dd>
@@ -527,8 +527,8 @@ async def handle_printer_status_html(request: web.Request) -> web.Response:
             )
 
         heater_rows = _heater_row("Extruder (T0)", status.get("extruder", {}))
-        for i in range(1, config.TOOL_COUNT):
-            ext_label = config.TOOL_NAMES.get(i, f"T{i}")
+        for i in range(1, getattr(config, "TOOL_COUNT", 1)):
+            ext_label = getattr(config, "TOOL_NAMES", {}).get(i, f"T{i}")
             heater_rows += _heater_row(ext_label, status.get(f"extruder{i}", {}))
         heater_rows += _heater_row("Bed", status.get("heater_bed", {}))
 
@@ -808,8 +808,8 @@ async def handle_input_shaper_html(request: web.Request) -> web.Response:
 
         # Read per-tool input shaper params from config files
         tool_shapers = []
-        for i in range(config.TOOL_COUNT):
-            tool_name = config.TOOL_NAMES.get(i, f"T{i}")
+        for i in range(getattr(config, "TOOL_COUNT", 1)):
+            tool_name = getattr(config, "TOOL_NAMES", {}).get(i, f"T{i}")
             filepath = f"Toolheads/T{i}.cfg"
 
             try:
