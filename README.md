@@ -312,8 +312,9 @@ nano ~/klipper-mcp/config.py
 #### `.env` file (simple, single-host)
 
 Most settings can also be supplied through a `.env` file in the project directory
-instead of editing `config.py`. On startup `config.py` loads it automatically (via
-`python-dotenv`), so this is the quickest way to keep secrets out of `config.py`:
+instead of editing `config.py`. When `config.py` is generated from the current
+`config.example.py` it loads the `.env` automatically (via `python-dotenv`), so this is
+the quickest way to keep secrets out of `config.py`:
 
 ```bash
 cp .env.example .env
@@ -325,6 +326,12 @@ The `.env` file is gitignored. Anything you set in the real environment (a shell
 leave out falls back to the default in `config.py`. `python-dotenv` is installed by
 `requirements.txt`; if it is missing, `.env` loading is simply skipped and the other
 methods still work.
+
+> **Upgrading an existing install:** `install.sh` only creates `config.py` when it is
+> missing, so a `config.py` from before this change won't have the loader block and will
+> ignore `.env`. Either copy the `load_dotenv` block from `config.example.py` into your
+> `config.py`, or (after backing up your settings) re-create it with
+> `cp config.example.py config.py`.
 
 #### Persistent environment variables (systemd override)
 

@@ -19,11 +19,11 @@ except ImportError:
 _HOME = os.path.expanduser("~")
 _MCP_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Load a .env file next to this config, if present. Variables already set in
-# the real environment (shell / systemd) take precedence over the file, since
-# load_dotenv defaults to override=False.
+# Load a .env file next to this config, if present. override=False (also the
+# library default, but set explicitly here) means variables already set in the
+# real environment (shell / systemd) take precedence over the file.
 if load_dotenv is not None:
-    load_dotenv(os.path.join(_MCP_DIR, ".env"))
+    load_dotenv(os.path.join(_MCP_DIR, ".env"), override=False)
 
 # =============================================================================
 # MOONRAKER CONNECTION
