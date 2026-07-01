@@ -68,7 +68,7 @@ def register_printer_tools(mcp):
         }
 
         # Try to get additional heaters
-        for i in range(1, config.TOOL_COUNT):
+        for i in range(1, getattr(config, "TOOL_COUNT", 1)):
             objects[f"extruder{i}"] = ["temperature", "target", "power"]
 
         result = await client.query_printer_objects(objects)
