@@ -480,7 +480,8 @@ def register_system_tools(mcp):
         Reboot the host system.
 
         Args:
-            delay_seconds: Delay before reboot in seconds (minimum 60, rounded to nearest minute)
+            delay_seconds: Delay before reboot in seconds, rounded to the nearest
+                minute (.5 rounds up). Scheduled delay is at least 1 minute.
         """
         if not config.ARMED:
             return json.dumps(
@@ -523,7 +524,8 @@ def register_system_tools(mcp):
         Shutdown the host system.
 
         Args:
-            delay_seconds: Delay before shutdown in seconds (minimum 60, rounded to nearest minute)
+            delay_seconds: Delay before shutdown in seconds, rounded to the nearest
+                minute (.5 rounds up). Scheduled delay is at least 1 minute.
         """
         if not config.ARMED:
             return json.dumps(

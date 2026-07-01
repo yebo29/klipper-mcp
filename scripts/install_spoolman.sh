@@ -72,9 +72,14 @@ else
     echo "System python3 ($(python3 -V 2>&1 || echo 'unknown')) is older than 3.9 — Spoolman needs 3.9+."
     echo "Fetching a prebuilt Python ${PYTHON_VERSION} via uv (no compiling)..."
 
-    # Install uv (a single static binary) if not already present
+    # Install uv (a single static binary) if not already present. Download the
+    # installer to a temp file and run it explicitly rather than piping
+    # `curl | sh`, so it can be inspected and a truncated download can't run.
     if ! command -v uv >/dev/null 2>&1; then
-        curl -fsSL https://astral.sh/uv/install.sh | sh
+        UV_INSTALLER="$(mktemp)"
+        curl -fsSL https://astral.sh/uv/install.sh -o "$UV_INSTALLER"
+        sh "$UV_INSTALLER"
+        rm -f "$UV_INSTALLER"
     fi
     # uv installs to ~/.local/bin (newer installers) or ~/.cargo/bin (older)
     export PATH="${HOME}/.local/bin:${HOME}/.cargo/bin:${PATH}"

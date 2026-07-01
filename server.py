@@ -1068,6 +1068,9 @@ async def handle_mcp(request: web.Request) -> web.Response:
     method = data.get("method", "")
     params = data.get("params", {})
     request_id = data.get("id")
+    # Per JSON-RPC 2.0 a notification is a request with NO "id" member. An
+    # explicit "id": null is still a request and must receive a response.
+    is_notification = "id" not in data
 
     result = None
     error = None
@@ -1165,8 +1168,8 @@ async def handle_mcp(request: web.Request) -> web.Response:
         traceback.print_exc()
         error = {"code": -32603, "message": str(e)}
 
-    # JSON-RPC notifications (no "id") must not receive a response
-    if request_id is None:
+    # JSON-RPC notifications (no "id" member) must not receive a response
+    if is_notification:
         return web.Response(status=204)
 
     response = {"jsonrpc": "2.0", "id": request_id}
