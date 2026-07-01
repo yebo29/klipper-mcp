@@ -358,15 +358,19 @@ def register_system_tools(mcp):
 
         if service.lower() == "all":
             services = allowed_services
-        elif service not in allowed_services:
-            return json.dumps(
-                {
-                    "error": f"Service '{service}' not in allowlist",
-                    "allowed_services": allowed_services,
-                }
-            )
         else:
-            services = [service]
+            # Match case-insensitively but run the canonical systemd unit name
+            canonical = next(
+                (s for s in allowed_services if s.lower() == service.lower()), None
+            )
+            if canonical is None:
+                return json.dumps(
+                    {
+                        "error": f"Service '{service}' not in allowlist",
+                        "allowed_services": allowed_services,
+                    }
+                )
+            services = [canonical]
 
         results = {}
 
@@ -483,7 +487,9 @@ def register_system_tools(mcp):
                 {"error": "System reboot requires ARMED=True in config", "armed": False}
             )
 
-        delay_minutes = max(1, round(delay_seconds / 60))
+        # Round to the nearest minute, .5 rounding up, never scheduling sooner
+        # than requested (avoids round()'s banker's rounding on tie values).
+        delay_minutes = max(1, (delay_seconds + 30) // 60)
 
         try:
             subprocess.Popen(
@@ -526,7 +532,9 @@ def register_system_tools(mcp):
                 }
             )
 
-        delay_minutes = max(1, round(delay_seconds / 60))
+        # Round to the nearest minute, .5 rounding up, never scheduling sooner
+        # than requested (avoids round()'s banker's rounding on tie values).
+        delay_minutes = max(1, (delay_seconds + 30) // 60)
 
         try:
             subprocess.Popen(

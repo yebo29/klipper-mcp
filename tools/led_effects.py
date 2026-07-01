@@ -75,11 +75,18 @@ def _scene_commands(scene_config: dict) -> list:
     Prefers the "commands" format; falls back to translating the legacy
     "effects" format into SET_LED_EFFECT commands.
     """
-    if "commands" in scene_config:
-        return list(scene_config.get("commands", []))
+    commands_val = scene_config.get("commands")
+    if isinstance(commands_val, list):
+        return list(commands_val)
+
+    effects = scene_config.get("effects")
+    if not isinstance(effects, list):
+        return []
 
     commands = []
-    for effect_cmd in scene_config.get("effects", []):
+    for effect_cmd in effects:
+        if not isinstance(effect_cmd, dict):
+            continue
         effect_name = effect_cmd.get("effect")
         if not effect_name:
             continue
