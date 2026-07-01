@@ -8,9 +8,22 @@ Copy this file to config.py and customize for your printer.
 
 import os
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    # python-dotenv is optional; env vars still work when set via the
+    # shell or a systemd drop-in (see README). We just skip .env loading.
+    load_dotenv = None
+
 # Base directories (derived from environment, never hardcoded)
 _HOME = os.path.expanduser("~")
 _MCP_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Load a .env file next to this config, if present. Variables already set in
+# the real environment (shell / systemd) take precedence over the file, since
+# load_dotenv defaults to override=False.
+if load_dotenv is not None:
+    load_dotenv(os.path.join(_MCP_DIR, ".env"))
 
 # =============================================================================
 # MOONRAKER CONNECTION

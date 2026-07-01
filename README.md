@@ -309,6 +309,23 @@ nano ~/klipper-mcp/config.py
 | `TOOL_COUNT` | Number of toolchanger tools |
 | `DISCORD_WEBHOOK_URL` | Discord notifications |
 
+#### `.env` file (simple, single-host)
+
+Most settings can also be supplied through a `.env` file in the project directory
+instead of editing `config.py`. On startup `config.py` loads it automatically (via
+`python-dotenv`), so this is the quickest way to keep secrets out of `config.py`:
+
+```bash
+cp .env.example .env
+nano .env          # set API_KEY, MOONRAKER_URL, etc.
+```
+
+The `.env` file is gitignored. Anything you set in the real environment (a shell
+`export` or the systemd override below) takes precedence over `.env`, and any key you
+leave out falls back to the default in `config.py`. `python-dotenv` is installed by
+`requirements.txt`; if it is missing, `.env` loading is simply skipped and the other
+methods still work.
+
 #### Persistent environment variables (systemd override)
 
 Some settings are read from environment variables rather than `config.py`. Exporting
