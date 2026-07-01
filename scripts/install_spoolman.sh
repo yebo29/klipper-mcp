@@ -61,18 +61,19 @@ unzip -q spoolman.zip
 rm spoolman.zip
 
 # --- Set up the Python environment -----------------------------------------
-# Use the system python3 if it is new enough (>= 3.9). Otherwise fetch a
-# prebuilt, isolated CPython via uv (a small download, no compiling) and build
-# the venv from it. The system Python is never replaced.
+# Use the system python3 only if it is new enough (>= 3.9) AND can create a
+# venv (the `venv` module may be missing when python3-venv isn't installed).
+# Otherwise fetch a prebuilt, isolated CPython via uv (a small download, no
+# compiling) and build the venv from it. The system Python is never replaced.
 echo "Checking Python version..."
-if python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' 2>/dev/null; then
-    echo "System python3 ($(python3 -V 2>&1)) is new enough."
+if python3 -c 'import sys, venv; sys.exit(0 if sys.version_info >= (3, 9) else 1)' 2>/dev/null; then
+    echo "System python3 ($(python3 -V 2>&1)) is new enough and has the venv module."
     python3 -m venv .venv
     source .venv/bin/activate
     pip install --upgrade pip
     pip install -e .
 else
-    echo "System python3 ($(python3 -V 2>&1 || echo 'unknown')) is older than 3.9 — Spoolman needs 3.9+."
+    echo "System python3 is unsuitable (needs >= 3.9 with the venv module) — using uv instead."
     echo "Fetching a prebuilt Python ${PYTHON_VERSION} via uv (no compiling)..."
 
     # Install uv (a single static binary) if not already present. Download the

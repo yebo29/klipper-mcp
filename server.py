@@ -159,25 +159,31 @@ def parse_docstring_args(docstring: str) -> dict:
     if not docstring:
         return {}
     args = {}
+    current_key = None
     in_args = False
     for line in docstring.split("\n"):
         stripped = line.strip()
         if stripped == "Args:":
             in_args = True
             continue
-        if in_args:
-            if stripped in (
-                "Returns:",
-                "Raises:",
-                "Note:",
-                "Notes:",
-                "Example:",
-                "Examples:",
-            ):
-                break
-            match = re.match(r"^(\w+):\s+(.+)$", stripped)
-            if match:
-                args[match.group(1)] = match.group(2)
+        if not in_args:
+            continue
+        if stripped in (
+            "Returns:",
+            "Raises:",
+            "Note:",
+            "Notes:",
+            "Example:",
+            "Examples:",
+        ):
+            break
+        match = re.match(r"^(\w+):\s+(.+)$", stripped)
+        if match:
+            current_key = match.group(1)
+            args[current_key] = match.group(2)
+        elif stripped and current_key:
+            # Indented continuation line — append to the current param's description
+            args[current_key] += " " + stripped
     return args
 
 
