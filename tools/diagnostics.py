@@ -18,6 +18,27 @@ _RUNTIME_LINE_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}")
 _MAX_LOG_BYTES = 2 * 1024 * 1024
 
 
+async def _read_log_tail(response) -> str:
+    """Return the last _MAX_LOG_BYTES of a response body as text.
+
+    Streams the body and keeps only a rolling tail buffer, so a very large
+    klippy.log is never fully held in memory (important on low-RAM SBCs). When
+    the log is larger than the cap, the leading partial line is dropped.
+    """
+    tail = bytearray()
+    truncated = False
+    async for chunk in response.content.iter_chunked(65536):
+        tail += chunk
+        if len(tail) > _MAX_LOG_BYTES:
+            del tail[:-_MAX_LOG_BYTES]
+            truncated = True
+    if truncated:
+        first_nl = tail.find(b"\n")
+        if first_nl >= 0:
+            del tail[: first_nl + 1]
+    return tail.decode("utf-8", errors="replace")
+
+
 def register_diagnostics_tools(mcp):
     """Register diagnostics tools."""
 
@@ -39,15 +60,7 @@ def register_diagnostics_tools(mcp):
                 if response.status == 404:
                     return json.dumps({"error": "klippy.log not found"})
                 response.raise_for_status()
-                raw = await response.read()
-                # Take the last _MAX_LOG_BYTES to avoid loading huge files
-                if len(raw) > _MAX_LOG_BYTES:
-                    raw = raw[-_MAX_LOG_BYTES:]
-                    # Skip the partial first line
-                    first_nl = raw.find(b"\n")
-                    if first_nl >= 0:
-                        raw = raw[first_nl + 1 :]
-                content = raw.decode("utf-8", errors="replace")
+                content = await _read_log_tail(response)
 
                 # Get last N lines
                 all_lines = content.split("\n")
@@ -170,13 +183,7 @@ def register_diagnostics_tools(mcp):
                 if response.status == 404:
                     return json.dumps({"error": "klippy.log not found"})
                 response.raise_for_status()
-                raw = await response.read()
-                if len(raw) > _MAX_LOG_BYTES:
-                    raw = raw[-_MAX_LOG_BYTES:]
-                    first_nl = raw.find(b"\n")
-                    if first_nl >= 0:
-                        raw = raw[first_nl + 1 :]
-                content = raw.decode("utf-8", errors="replace")
+                content = await _read_log_tail(response)
 
                 lines = content.split("\n")
 
