@@ -532,9 +532,10 @@ async def handle_printer_status_html(request: web.Request) -> web.Response:
                 f"<td>{power:.0f}%</td></tr>"
             )
 
-        heater_rows = _heater_row("Extruder (T0)", status.get("extruder", {}))
+        tool_names = getattr(config, "TOOL_NAMES", {})
+        heater_rows = _heater_row(tool_names.get(0, "T0"), status.get("extruder", {}))
         for i in range(1, getattr(config, "TOOL_COUNT", 1)):
-            ext_label = getattr(config, "TOOL_NAMES", {}).get(i, f"T{i}")
+            ext_label = tool_names.get(i, f"T{i}")
             heater_rows += _heater_row(ext_label, status.get(f"extruder{i}", {}))
         heater_rows += _heater_row("Bed", status.get("heater_bed", {}))
 

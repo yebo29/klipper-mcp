@@ -426,7 +426,8 @@ def register_system_tools(mcp):
         Restart a printer-related service.
 
         Args:
-            service: Service to restart - 'klipper', 'moonraker', 'KlipperScreen', 'crowsnest'
+            service: Service to restart. Allowed (case-insensitive): 'klipper',
+                'moonraker', 'KlipperScreen', 'crowsnest', 'klipper-mcp'.
         """
         canonical = _canonical_service(service)
         if canonical is None:
