@@ -41,6 +41,7 @@ data/audit.log
 data/maintenance.json
 backups/*.tar.gz
 backups/*.zip
+.claude/
 
 # Config with secrets - IMPORTANT: Use config.example.py as template
 config.py
