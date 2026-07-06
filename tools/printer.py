@@ -15,7 +15,7 @@ def register_printer_tools(mcp):
     @mcp.tool()
     async def get_printer_status() -> str:
         """
-        Get comprehensive Voron printer status including temperatures,
+        Get comprehensive printer status including temperatures,
         position, print state, and progress.
         """
         client = get_client()
@@ -68,7 +68,7 @@ def register_printer_tools(mcp):
         }
 
         # Try to get additional heaters
-        for i in range(1, config.TOOL_COUNT):
+        for i in range(1, getattr(config, "TOOL_COUNT", 1)):
             objects[f"extruder{i}"] = ["temperature", "target", "power"]
 
         result = await client.query_printer_objects(objects)

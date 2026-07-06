@@ -5,6 +5,7 @@ Configuration backup, restore, and maintenance tracking
 
 import json
 import os
+import aiohttp
 from datetime import datetime
 from typing import Optional
 import config
@@ -55,9 +56,9 @@ def register_backup_tools(mcp):
         # Create backup directory name
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_name = backup_name or f"backup_{timestamp}"
-        backup_dir = f"config_backups/{backup_name}"
 
         backed_up_files = []
+        failed_files = []
 
         # Copy each config file to backup
         session = await client._get_session()
@@ -81,16 +82,24 @@ def register_backup_tools(mcp):
                                 f.write(content)
 
                             backed_up_files.append(filename)
+                        else:
+                            failed_files.append(
+                                {
+                                    "file": filename,
+                                    "error": f"HTTP {response.status}",
+                                }
+                            )
                 except Exception as e:
-                    pass  # Continue with other files
+                    failed_files.append({"file": filename, "error": str(e)})
 
         return json.dumps(
             {
-                "success": True,
+                "success": len(failed_files) == 0,
                 "backup_name": backup_name,
                 "backup_path": os.path.join(config.BACKUP_PATH, backup_name),
                 "files_backed_up": backed_up_files,
                 "file_count": len(backed_up_files),
+                "failed_files": failed_files,
             },
             indent=2,
         )
@@ -385,7 +394,3 @@ def register_backup_tools(mcp):
             },
             indent=2,
         )
-
-
-# Import aiohttp for file upload
-import aiohttp

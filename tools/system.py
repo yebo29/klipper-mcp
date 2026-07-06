@@ -10,6 +10,23 @@ from typing import Optional
 import config
 from moonraker import get_client
 
+# Services klipper-mcp may query/restart, in canonical systemd unit form.
+_ALLOWED_SERVICES = [
+    "klipper",
+    "moonraker",
+    "KlipperScreen",
+    "crowsnest",
+    "klipper-mcp",
+]
+
+
+def _canonical_service(service: str):
+    """Match a user-supplied service name to the allowlist case-insensitively.
+
+    Returns the canonical systemd unit name, or None if the service is not allowed.
+    """
+    return next((s for s in _ALLOWED_SERVICES if s.lower() == service.lower()), None)
+
 
 def register_system_tools(mcp):
     """Register system management tools."""
@@ -348,10 +365,18 @@ def register_system_tools(mcp):
         Args:
             service: Service name or 'all' for all services (default: all)
         """
-        services = ["klipper", "moonraker", "KlipperScreen", "crowsnest"]
-
-        if service.lower() != "all":
-            services = [service]
+        if service.lower() == "all":
+            services = _ALLOWED_SERVICES
+        else:
+            canonical = _canonical_service(service)
+            if canonical is None:
+                return json.dumps(
+                    {
+                        "error": f"Service '{service}' not in allowlist",
+                        "allowed_services": _ALLOWED_SERVICES,
+                    }
+                )
+            services = [canonical]
 
         results = {}
 
@@ -401,23 +426,18 @@ def register_system_tools(mcp):
         Restart a printer-related service.
 
         Args:
-            service: Service to restart - 'klipper', 'moonraker', 'KlipperScreen', 'crowsnest'
+            service: Service to restart. Allowed (case-insensitive): 'klipper',
+                'moonraker', 'KlipperScreen', 'crowsnest', 'klipper-mcp'.
         """
-        allowed_services = [
-            "klipper",
-            "moonraker",
-            "KlipperScreen",
-            "crowsnest",
-            "klipper-mcp",
-        ]
-
-        if service not in allowed_services:
+        canonical = _canonical_service(service)
+        if canonical is None:
             return json.dumps(
                 {
                     "error": f"Service '{service}' not allowed",
-                    "allowed_services": allowed_services,
+                    "allowed_services": _ALLOWED_SERVICES,
                 }
             )
+        service = canonical
 
         try:
             result = subprocess.run(
@@ -456,27 +476,40 @@ def register_system_tools(mcp):
             return json.dumps({"error": str(e)})
 
     @mcp.tool(write=True)
-    async def reboot_system(delay_seconds: int = 5) -> str:
+    async def reboot_system(delay_seconds: int = 60) -> str:
         """
-        Reboot the CB1/Raspberry Pi system.
+        Reboot the host system.
 
         Args:
-            delay_seconds: Delay before reboot (default: 5)
+            delay_seconds: Delay before reboot in seconds, rounded to the nearest
+                minute (.5 rounds up). Scheduled delay is at least 1 minute.
         """
         if not config.ARMED:
             return json.dumps(
                 {"error": "System reboot requires ARMED=True in config", "armed": False}
             )
 
+        if delay_seconds < 0:
+            return json.dumps(
+                {
+                    "error": "delay_seconds must be non-negative",
+                    "delay_seconds": delay_seconds,
+                }
+            )
+
+        # Round to the nearest minute, .5 rounding up (shutdown takes whole
+        # minutes). Integer arithmetic avoids round()'s banker's rounding, which
+        # rounds tie values (e.g. 150s) to an even minute and scheduled sooner.
+        delay_minutes = max(1, (delay_seconds + 30) // 60)
+
         try:
-            # Schedule reboot
             subprocess.Popen(
                 [
                     "sudo",
                     "shutdown",
                     "-r",
-                    f"+{delay_seconds // 60}",
-                    f"Reboot requested via MCP",
+                    f"+{delay_minutes}",
+                    "Reboot requested via MCP",
                 ],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -485,7 +518,7 @@ def register_system_tools(mcp):
             return json.dumps(
                 {
                     "status": "scheduled",
-                    "message": f"System will reboot in {delay_seconds} seconds",
+                    "message": f"System will reboot in approximately {delay_minutes} minute(s)",
                     "warning": "All services will be unavailable during reboot",
                 },
                 indent=2,
@@ -495,12 +528,13 @@ def register_system_tools(mcp):
             return json.dumps({"error": str(e)})
 
     @mcp.tool(write=True)
-    async def shutdown_system(delay_seconds: int = 5) -> str:
+    async def shutdown_system(delay_seconds: int = 60) -> str:
         """
-        Shutdown the CB1/Raspberry Pi system.
+        Shutdown the host system.
 
         Args:
-            delay_seconds: Delay before shutdown (default: 5)
+            delay_seconds: Delay before shutdown in seconds, rounded to the nearest
+                minute (.5 rounds up). Scheduled delay is at least 1 minute.
         """
         if not config.ARMED:
             return json.dumps(
@@ -510,14 +544,27 @@ def register_system_tools(mcp):
                 }
             )
 
+        if delay_seconds < 0:
+            return json.dumps(
+                {
+                    "error": "delay_seconds must be non-negative",
+                    "delay_seconds": delay_seconds,
+                }
+            )
+
+        # Round to the nearest minute, .5 rounding up (shutdown takes whole
+        # minutes). Integer arithmetic avoids round()'s banker's rounding, which
+        # rounds tie values (e.g. 150s) to an even minute and scheduled sooner.
+        delay_minutes = max(1, (delay_seconds + 30) // 60)
+
         try:
             subprocess.Popen(
                 [
                     "sudo",
                     "shutdown",
                     "-h",
-                    f"+{delay_seconds // 60}",
-                    f"Shutdown requested via MCP",
+                    f"+{delay_minutes}",
+                    "Shutdown requested via MCP",
                 ],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
@@ -526,7 +573,7 @@ def register_system_tools(mcp):
             return json.dumps(
                 {
                     "status": "scheduled",
-                    "message": f"System will shutdown in {delay_seconds} seconds",
+                    "message": f"System will shut down in approximately {delay_minutes} minute(s)",
                     "warning": "You will need physical access to power on again",
                 },
                 indent=2,

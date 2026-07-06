@@ -9,45 +9,103 @@ from typing import Optional
 import config
 from moonraker import get_client
 
-# Pre-defined LED scenes for common printer states
+# Pre-defined LED scenes for common printer states.
+# Each scene is a list of raw G-code commands run in order — the same format
+# used by scenes/led_scenes.json. Effect names are placeholders; override them
+# via the JSON file to match your printer.cfg [led_effect] sections.
 DEFAULT_SCENES = {
     "idle": {
         "description": "Calm breathing effect when printer is idle",
-        "effects": [{"effect": "panel_idle", "action": "start"}],
+        "commands": ["STOP_LED_EFFECTS", "SET_LED_EFFECT EFFECT=panel_idle"],
     },
     "heating": {
         "description": "Orange/red pulsing while heating",
-        "effects": [{"effect": "heating", "action": "start", "replace": True}],
+        "commands": ["STOP_LED_EFFECTS", "SET_LED_EFFECT EFFECT=heating"],
     },
     "printing": {
         "description": "Steady illumination during printing",
-        "effects": [{"effect": "printing", "action": "start", "replace": True}],
+        "commands": ["STOP_LED_EFFECTS", "SET_LED_EFFECT EFFECT=printing"],
     },
     "tool_change": {
         "description": "Flash effect during tool changes",
-        "effects": [{"effect": "tool_change", "action": "start"}],
+        "commands": ["SET_LED_EFFECT EFFECT=tool_change"],
     },
     "complete": {
         "description": "Green celebration when print completes",
-        "effects": [{"effect": "print_complete", "action": "start", "replace": True}],
+        "commands": ["STOP_LED_EFFECTS", "SET_LED_EFFECT EFFECT=print_complete"],
     },
     "error": {
         "description": "Red flashing on error",
-        "effects": [{"effect": "critical_error", "action": "start", "replace": True}],
+        "commands": ["STOP_LED_EFFECTS", "SET_LED_EFFECT EFFECT=critical_error"],
     },
-    "off": {"description": "Turn off all LED effects", "effects": []},
+    "off": {
+        "description": "Turn off all LED effects",
+        "commands": ["STOP_LED_EFFECTS"],
+    },
 }
 
 
 def load_scenes() -> dict:
-    """Load LED scenes from config file or return defaults."""
+    """Load LED scenes from config file or return defaults.
+
+    Supports the scenes/led_scenes.json layout, which nests the scene map under
+    a top-level "scenes" key (alongside metadata like "available_effects").
+    Also accepts a legacy flat {scene_name: {...}} mapping.
+    """
+    data = None
     try:
         if os.path.exists(config.LED_SCENES_FILE):
             with open(config.LED_SCENES_FILE, "r") as f:
-                return json.load(f)
+                data = json.load(f)
     except Exception:
-        pass
+        data = None
+
+    if isinstance(data, dict):
+        # New format wraps the scene map under "scenes"
+        if isinstance(data.get("scenes"), dict):
+            return data["scenes"]
+        # Legacy flat format
+        return data
     return DEFAULT_SCENES
+
+
+def _scene_commands(scene_config: dict) -> list:
+    """Return the list of raw G-code commands for a scene.
+
+    Prefers the "commands" format; falls back to translating the legacy
+    "effects" format into SET_LED_EFFECT commands.
+    """
+    if not isinstance(scene_config, dict):
+        # A malformed scenes file may map a name to a non-object value;
+        # treat it as having no commands rather than raising AttributeError.
+        return []
+    commands_val = scene_config.get("commands")
+    if isinstance(commands_val, list):
+        # Keep only non-empty strings; drop null/number/object entries so they
+        # can't be passed through to run_gcode as bogus commands.
+        return [c for c in commands_val if isinstance(c, str) and c.strip()]
+
+    effects = scene_config.get("effects")
+    if not isinstance(effects, list):
+        return []
+
+    commands = []
+    for effect_cmd in effects:
+        if not isinstance(effect_cmd, dict):
+            continue
+        effect_name = effect_cmd.get("effect")
+        if not effect_name:
+            continue
+        if effect_cmd.get("action", "start") == "start":
+            cmd = f"SET_LED_EFFECT EFFECT={effect_name}"
+            if effect_cmd.get("replace"):
+                cmd += " REPLACE=1"
+            if effect_cmd.get("fadetime"):
+                cmd += f" FADETIME={effect_cmd['fadetime']}"
+        else:
+            cmd = f"SET_LED_EFFECT EFFECT={effect_name} STOP=1"
+        commands.append(cmd)
+    return commands
 
 
 def register_led_tools(mcp):
@@ -167,35 +225,36 @@ def register_led_tools(mcp):
             )
 
         scene_config = scenes[scene]
+        if not isinstance(scene_config, dict):
+            return json.dumps(
+                {
+                    "error": f"Scene '{scene}' has an invalid configuration",
+                    "hint": "Each scene must be a JSON object with a 'commands' list",
+                }
+            )
         client = get_client()
 
-        # First stop all effects if scene is 'off' or has replace
-        if scene == "off":
-            await client.run_gcode("STOP_LED_EFFECTS FADETIME=0.5")
-            return json.dumps(
-                {"success": True, "scene": "off", "message": "All effects stopped"}
-            )
-
-        # Apply each effect in the scene
-        results = []
-        for effect_cmd in scene_config.get("effects", []):
-            effect_name = effect_cmd.get("effect")
-            action = effect_cmd.get("action", "start")
-
-            if action == "start":
-                cmd = f"SET_LED_EFFECT EFFECT={effect_name}"
-                if effect_cmd.get("replace"):
-                    cmd += " REPLACE=1"
-                if effect_cmd.get("fadetime"):
-                    cmd += f" FADETIME={effect_cmd['fadetime']}"
+        commands = _scene_commands(scene_config)
+        if not commands:
+            # Backward compat: a legacy "off" scene (e.g. {"effects": []}) has no
+            # derived commands but is meant to stop everything.
+            if scene == "off":
+                commands = ["STOP_LED_EFFECTS"]
             else:
-                cmd = f"SET_LED_EFFECT EFFECT={effect_name} STOP=1"
+                return json.dumps(
+                    {
+                        "error": f"Scene '{scene}' has no commands defined",
+                        "hint": "Add a 'commands' list to the scene in led_scenes.json",
+                    }
+                )
 
+        # Run each raw G-code command in order
+        results = []
+        for cmd in commands:
             result = await client.run_gcode(cmd)
             results.append(
                 {
-                    "effect": effect_name,
-                    "action": action,
+                    "command": cmd,
                     "result": "ok" if "error" not in result else result["error"],
                 }
             )
@@ -205,7 +264,7 @@ def register_led_tools(mcp):
                 "success": True,
                 "scene": scene,
                 "description": scene_config.get("description", ""),
-                "effects_applied": results,
+                "commands_run": results,
             }
         )
 
@@ -233,7 +292,7 @@ def register_led_tools(mcp):
                     {
                         "name": name,
                         "description": scene_config.get("description", ""),
-                        "effects_count": len(scene_config.get("effects", [])),
+                        "command_count": len(_scene_commands(scene_config)),
                     }
                 )
             else:
@@ -241,7 +300,7 @@ def register_led_tools(mcp):
                     {
                         "name": name,
                         "description": "(invalid config)",
-                        "effects_count": 0,
+                        "command_count": 0,
                     }
                 )
 
