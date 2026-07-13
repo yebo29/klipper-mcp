@@ -2,10 +2,6 @@ name: Lint Markdown
 
 on:
   pull_request:
-    paths:
-      - '**.md'
-      - .markdownlint.jsonc
-      - .github/workflows/lint-markdown.yml
 
 permissions:
   contents: read
