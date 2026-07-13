@@ -1,34 +1,23 @@
 # Klipper MCP Server
 
-A fork of <https://github.com/Charleslotto/klipper-mcp> with the following updates:
+A Model Context Protocol (MCP) server for controlling Klipper 3D printers via the Moonraker API. Lets AI assistants like Claude observe and control your printer (Voron, RatRig, or any Klipper machine) from VS Code, Claude Desktop, or Claude Code.
 
-- Removed hard-coded `biqu` user
-- Added Read-Only mode for AI agents to observe printer state without risk of changing it
-- Removed config.py from the repository for security; users must create their own
-- Update logging to use journald instead of a local file for better system integration and protections
-- install.sh now exectable by default
-- Added `moonraker` integration instructions to the README and adding to moonraker.asvc update to install.sh.
-- Added sections for NGINX SSL termination + config, NGINX Proxy Manager and Claude Desktop stdio shim to the README
-- Added instructions for VS Code and Claude Code clients to the README
-- Updated install instructions to include generating a secure API key and admin PIN, and added instructions for adding klipper-mcp to Moonraker's update_manager for auto-updates.
+Exposes **100+ tools** — from basic control to diagnostics and toolchanger management.
 
-A Model Context Protocol (MCP) server for controlling Klipper 3D printers via Moonraker API. Enables AI assistants like Claude to control your 3D printer through VS Code or any MCP-compatible client.
+Fork of [Charleslotto/klipper-mcp](https://github.com/Charleslotto/klipper-mcp) adding: read-only mode for AI agents, `.env`/journald config, removed hard-coded user, secure key/PIN generation, NGINX SSL setup, Claude Desktop/VS Code/Claude Code client docs, and Moonraker `update_manager` auto-updates.
 
-## Overview
+## Tools
 
-This server exposes **100+ tools** for complete printer management, from basic operations to advanced diagnostics and toolchanger control. Perfect for Voron, RatRig, or any Klipper-based printer.
+> 🔒 = **write tool** — changes printer or system state. Write tools are never registered when `READ_ONLY=true` (see [Security](#security)); many also require `ARMED=true` and/or the admin PIN.
 
-## Features
-
-> 🔒 marks a **write tool** — one that changes printer or system state. Write
-> tools are never registered when `READ_ONLY=true` (see [Security](#security)),
-> and many also require `ARMED=true` and/or the admin PIN at call time.
+<details>
+<summary><b>Full tool catalog (click to expand)</b></summary>
 
 ### 🖨️ Core Printer Control
 
 | Tool | Description |
 | ------ | ------------- |
-| `get_printer_status` | Full status including temps, position, state |
+| `get_printer_status` | Full status: temps, position, state |
 | `get_temperatures` | Current temperatures for all heaters |
 | `get_server_info` | Moonraker server info and version |
 | `set_temperature` 🔒 | Set a heater (hotend/bed) target temp |
@@ -40,7 +29,7 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `restart_klipper` 🔒 | Firmware restart |
 | `emergency_stop` 🔒 | Immediate halt (requires admin PIN) |
 
-### 🔧 StealthChanger / Toolchanger Support
+### 🔧 StealthChanger / Toolchanger
 
 | Tool | Description |
 | ------ | ------------- |
@@ -209,53 +198,47 @@ This server exposes **100+ tools** for complete printer management, from basic o
 | `reboot_system` 🔒 | System reboot (requires ARMED) |
 | `shutdown_system` 🔒 | System shutdown (requires ARMED) |
 
+</details>
+
 ## Installation
 
 ### Prerequisites
 
-- Klipper + Moonraker running on your printer
-- Python 3.9+ on your CB1/Raspberry Pi
-- Network access between your client machine and the printer
-- An MCP-capable client — VS Code (Copilot), Claude Desktop, or Claude Code
+- Klipper + Moonraker running on the printer
+- Python 3.9+ on the CB1/Raspberry Pi
+- Network access between client and printer
+- An MCP client: VS Code (Copilot), Claude Desktop, or Claude Code
+- An HTTPS reverse proxy (recommended — see below)
 
-### Quick Start (5 minutes)
+### Quick Start
 
 ```bash
-# 1. SSH into your printer
-ssh <user>@192.168.x.x  # or pi@192.168.x.x for Raspberry Pi
+# 1. SSH into the printer, then clone
+ssh <user>@192.168.x.x
+cd ~ && git clone https://github.com/yebo29/klipper-mcp.git && cd klipper-mcp
 
-# 2. Clone the repository
-cd ~
-git clone https://github.com/yebo29/klipper-mcp.git
-cd klipper-mcp
-
-# 3. Create config from template
+# 2. Create configs from templates
 cp config.example.py config.py
+cp .env.example .env
 
-# 4. Generate a secure API key
+# 3. Generate a secure API key and a 6-digit admin PIN
 python3 -c "import secrets; print(secrets.token_urlsafe(32))"
-
-# 5. Generate a secure 6-digit admin PIN
 python3 -c "import secrets; print(secrets.randbelow(900000) + 100000)"
 
-# 6. Paste both into config.py and adjust any other settings
-nano config.py
+# 4. Paste both into .env, set MOONRAKER_URL, etc.
+nano .env
 
-# 7. Run the installer (install.sh is already executable in this fork)
+# 5. Install and start (install.sh is already executable)
 ./install.sh
-
-# 8. Start the service
-sudo systemctl start klipper-mcp
-sudo systemctl enable klipper-mcp  # Auto-start on boot
+sudo systemctl enable --now klipper-mcp
+sudo systemctl status klipper-mcp
 ```
 
-> **Why two secrets?** `API_KEY` authenticates every request to the server — without it, no
-> tool calls succeed. `ADMIN_PIN` is an *additional* gate that destructive operations
-> (file delete, config restore, system reboot) require on top of the key. Treat both like
-> passwords; the one-liners above use Python's `secrets` module so the output is
-> cryptographically random rather than something you'd reuse or guess.
+**Why two secrets?** `API_KEY` authenticates every request. `ADMIN_PIN` is an *extra* gate on destructive ops (file delete, config restore, reboot). Treat both like passwords; the `secrets` one-liners produce cryptographically random values.
 
-Add to Moonraker's `update_manager` config to auto-update MCP:
+### Auto-updates via Moonraker
+
+Add to Moonraker's `update_manager`:
 
 ```ini
 [update_manager klipper-mcp]
@@ -269,133 +252,93 @@ env: ~/klipper-mcp/venv/bin/python
 install_script: install.sh
 ```
 
-Then add `klipper-mcp` as a line in `~/printer_data/moonraker.asvc` so Moonraker is
-allowed to restart the service after an update, and `sudo systemctl restart moonraker`
-to pick up the new section.
+Then add `klipper-mcp` as a line in `~/printer_data/moonraker.asvc` (so Moonraker may restart the service) and `sudo systemctl restart moonraker`.
 
-### Verify Installation
+### Verify
 
 ```bash
-# Check service is running
 sudo systemctl status klipper-mcp
-
-# Test the API (replace with your API key)
-curl -H "X-API-Key: your-api-key" http://localhost:8000/health
-
-# View logs
+curl -H "X-API-Key: your-api-key" http://<printer_hostname>:8000/health
 journalctl -u klipper-mcp -f
 ```
 
-### Configuration
+## Configuration
 
-Copy `config.example.py` to `config.py` and customize:
+Settings come from `.env` (loaded automatically by `config.py` via `python-dotenv`), the real environment, or `config.py` defaults — in that precedence order. `.env` is gitignored, so it's the easiest place to keep secrets.
 
-```bash
-nano ~/klipper-mcp/config.py
+Full reference (`config.py`):
+
+```python
+# Moonraker connection
+MOONRAKER_URL = "http://localhost:7125"
+PRINTER_NAME  = "Voron"
+
+# MCP server
+MCP_HOST = "0.0.0.0"
+MCP_PORT = 8000
+MCP_TRANSPORT = "http"          # or "stdio" for local use
+
+# Security
+API_KEY   = "your-secret-key"   # required for all API calls
+ARMED     = False               # True to enable dangerous ops
+READ_ONLY = False               # True to unregister ALL write tools
+ADMIN_PIN = "123456"            # required for destructive ops
+
+# Camera
+CAMERA_SNAPSHOT_URL = "http://localhost/webcam/?action=snapshot"
+CAMERA_STREAM_URL   = "http://localhost/webcam/?action=stream"
+
+# Spoolman (optional)
+SPOOLMAN_ENABLED = True
+SPOOLMAN_URL     = "http://localhost:7912"
+
+# Notifications (optional)
+DISCORD_WEBHOOK_URL = ""
+SLACK_WEBHOOK_URL   = ""
+PUSHOVER_USER_KEY   = ""
+PUSHOVER_API_TOKEN  = ""
+
+# Text-to-Speech (optional)
+TTS_ENABLED = False
+TTS_RATE    = 150
+TTS_VOLUME  = 1.0
+
+# Maintenance intervals (print hours)
+MAINTENANCE_INTERVALS = {"nozzle": 200, "belts": 500, "linear_rails": 1000, "filters": 100}
+
+# StealthChanger / Toolchanger
+TOOL_COUNT = 4                  # number of tools (T0-T3)
 ```
 
-**Required settings:**
+**Upgrading?** `install.sh` only creates `config.py` when missing, so an old `config.py` won't have the `load_dotenv` block and will ignore `.env`. Copy the block from `config.example.py`, or re-create it with `cp config.example.py config.py` (back up settings first).
 
-| Setting | Description | Example |
-| --------- | ------------- | --------- |
-| `API_KEY` | Secure authentication key | `python3 -c "import secrets; print(secrets.token_urlsafe(32))"` |
-| `MOONRAKER_URL` | Your Moonraker address | `http://localhost:7125` |
-| `PRINTER_NAME` | Display name | `Voron 2.4` |
+### Persistent env vars (systemd override)
 
-**Security settings:**
-
-| Setting     | Description                 | Default  |
-|-------------|-----------------------------|----------|
-| `ARMED`     | Enable dangerous operations | `false`  |
-| `READ_ONLY` | Block all mutating tools    | `false`  |
-| `ADMIN_PIN` | PIN for destructive ops     | `123456` |
-
-**Optional integrations:**
-
-| Setting | Description |
-| --------- | ------------- |
-| `SPOOLMAN_ENABLED` | Enable Spoolman filament tracking |
-| `TOOL_COUNT` | Number of toolchanger tools |
-| `DISCORD_WEBHOOK_URL` | Discord notifications |
-
-#### `.env` file (simple, single-host)
-
-Most settings can also be supplied through a `.env` file in the project directory
-instead of editing `config.py`. When `config.py` is generated from the current
-`config.example.py` it loads the `.env` automatically (via `python-dotenv`), so this is
-the quickest way to keep secrets out of `config.py`:
-
-```bash
-cp .env.example .env
-nano .env          # set API_KEY, MOONRAKER_URL, etc.
-```
-
-The `.env` file is gitignored. Anything you set in the real environment (a shell
-`export` or the systemd override below) takes precedence over `.env`, and any key you
-leave out falls back to the default in `config.py`. `python-dotenv` is installed by
-`requirements.txt`; if it is missing, `.env` loading is simply skipped and the other
-methods still work.
-
-> **Upgrading an existing install:** `install.sh` only creates `config.py` when it is
-> missing, so a `config.py` from before this change won't have the loader block and will
-> ignore `.env`. Either copy the `load_dotenv` block from `config.example.py` into your
-> `config.py`, or (after backing up your settings) re-create it with
-> `cp config.example.py config.py`.
-
-#### Persistent environment variables (systemd override)
-
-Some settings are read from environment variables rather than `config.py`. Exporting
-them in your shell or `~/.bashrc` won't work: those die when your SSH session ends and
-are never seen by the service, which runs under systemd — not your login shell. To set
-variables that survive logoff **and** reboots, add a systemd drop-in override for the
-`klipper-mcp` unit.
-
-Example — enabling and pointing at Spoolman:
+Shell `export` / `~/.bashrc` don't reach the service — it runs under systemd, not your login shell. To set variables that survive logoff and reboot, use a drop-in override:
 
 ```bash
 sudo systemctl edit klipper-mcp
-# Paste the following into the file that opens in the editor
+# In the editor:
 [Service]
 Environment="SPOOLMAN_ENABLED=true"
 Environment="SPOOLMAN_URL=https://spoolman.example.com"
 
-# Reload and apply
-sudo systemctl daemon-reload
-sudo systemctl restart klipper-mcp
-
-# Confirm
-sudo systemctl show klipper-mcp -p Environment
-# should list SPOOLMAN_ENABLED=true and SPOOLMAN_URL=https://...
+sudo systemctl daemon-reload && sudo systemctl restart klipper-mcp
+sudo systemctl show klipper-mcp -p Environment   # confirm
 ```
 
-`systemctl edit` writes the override to
-`/etc/systemd/system/klipper-mcp.service.d/override.conf`, leaving the shipped unit file
-untouched — so a package or `git pull` update won't clobber your settings. Add one
-`Environment="KEY=value"` line per variable.
-
----
+This writes to `/etc/systemd/system/klipper-mcp.service.d/override.conf`, leaving the shipped unit untouched so updates won't clobber it. One `Environment=` line per variable.
 
 ## Reverse Proxy + HTTPS (Recommended)
 
-Running klipper-mcp directly on `http://<pi>:8000` is fine for a quick local test, but
-in practice you almost always want an HTTPS reverse proxy in front of it for two reasons:
+Direct `http://<pi>:8000` works for a quick test, but a HTTPS reverse proxy is worth it:
 
-1. **TLS termination.** Claude Desktop's custom-connector flow *requires* HTTPS — it
-   will refuse a plain-HTTP URL outright. Other clients accept HTTP on a LAN but the
-   `X-API-Key` travels in cleartext, which is needlessly leaky.
-2. **Server-side auth injection.** A reverse proxy can add the `X-API-Key` header itself,
-   so the secret lives on your trusted server and never has to be configured in each
-   client. Clients just point at the HTTPS URL.
+1. **TLS termination** — Claude Desktop's connector flow *requires* HTTPS; other clients send `X-API-Key` in cleartext over plain HTTP.
+2. **Server-side auth** — the proxy injects `X-API-Key`, so the secret lives on your server and clients just point at the HTTPS URL.
 
-The shape is: `Client → HTTPS → nginx (injects X-API-Key) → http://localhost:8000 → klipper-mcp`.
+Shape: `Client → HTTPS → nginx (injects X-API-Key) → http://localhost:8000 → klipper-mcp`
 
-### Prerequisites
-
-- A domain you control with a DNS record for the printer (e.g. `printer.example.com`).
-  Tailscale, Cloudflare Tunnel, or a LAN-only split-horizon DNS all work — the cert
-  authority just needs to be able to validate ownership.
-- TLS certificate. Let's Encrypt via DNS-01 is the most portable choice because it
-  works whether or not the printer is exposed to the public internet.
+**Prerequisites:** a domain with a DNS record for the printer (Tailscale, Cloudflare Tunnel, or split-horizon LAN DNS all work) and a TLS cert (Let's Encrypt via DNS-01 is most portable).
 
 ### Option A: Raw nginx
 
@@ -410,10 +353,10 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
 
     location / {
-        proxy_pass http://127.0.0.1:8000;   # or the LAN IP if nginx is on a different host
+        proxy_pass http://127.0.0.1:8000;
         proxy_http_version 1.1;
 
-        # Inject the API key server-side. Clients never need to know it.
+        # Inject the API key server-side. Clients never need it.
         proxy_set_header X-API-Key "<paste-your-API_KEY-here>";
 
         proxy_set_header Host              $host;
@@ -421,15 +364,14 @@ server {
         proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
 
-        # MCP uses streaming JSON-RPC. Disable buffering so events flow through promptly.
+        # MCP streams JSON-RPC. Disable buffering so events flow promptly.
         proxy_buffering           off;
         proxy_cache               off;
         proxy_read_timeout        3600s;
         proxy_send_timeout        3600s;
         chunked_transfer_encoding off;
 
-        # Tune this up if you upload large G-code files via upload_gcode_file.
-        client_max_body_size 100m;
+        client_max_body_size 100m;   # raise for large G-code uploads
     }
 }
 
@@ -441,33 +383,18 @@ server {
 }
 ```
 
-Enable and reload:
-
 ```bash
 sudo ln -s /etc/nginx/sites-available/klipper-mcp.conf /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
 ### Option B: NGINX Proxy Manager (UI)
 
-If you're running [NGINX Proxy Manager](https://nginxproxymanager.com/):
+**Proxy Hosts → Add Proxy Host:**
 
-**Hosts → Proxy Hosts → Add Proxy Host**
-
-- **Domain Names**: `printer.example.com`
-- **Scheme**: `http`
-- **Forward Hostname/IP**: the Pi's IP (or hostname)
-- **Forward Port**: `8000`
-- **Cache Assets**: OFF
-- **Block Common Exploits**: OFF (its rules can interfere with JSON-RPC bodies)
-- **Websockets Support**: ON (sets `http_version 1.1` + `Upgrade`/`Connection` headers needed for MCP streaming)
-
-**SSL tab**
-
-- Pick an existing wildcard cert, or "Request a new SSL Certificate" via Let's Encrypt
-- **Force SSL**: ON
-- **HTTP/2 Support**: ON
+- **Domain**: `printer.example.com` · **Scheme**: `http` · **Forward**: Pi IP, port `8000`
+- **Cache Assets**: OFF · **Block Common Exploits**: OFF (interferes with JSON-RPC) · **Websockets**: ON
+- **SSL tab**: pick/request a cert · **Force SSL**: ON · **HTTP/2**: ON
 
 **Advanced tab** — paste:
 
@@ -482,606 +409,187 @@ chunked_transfer_encoding off;
 client_max_body_size      100m;
 ```
 
-Save. NPM reloads nginx automatically.
+### Verify the proxy
 
-### Verify
-
-From any client machine:
+From a client, *after* installing the MCP server:
 
 ```bash
 curl -sv https://printer.example.com/health 2>&1 | grep -E "HTTP|< [A-Za-z]"
 ```
 
-Expect `HTTP/2 200`. You're not sending an `X-API-Key` — nginx injected it upstream.
+Expect `HTTP/2 200` (no `X-API-Key` — nginx injected it).
 
-- `502 Bad Gateway` → nginx can't reach klipper-mcp. Check the forward host/port.
-- `401 Unauthorized` → header injection didn't land. Check the `proxy_set_header`
-  line for typos, quotes, and the trailing semicolon.
-- `Connection refused` → klipper-mcp is bound to `127.0.0.1`. Set `MCP_HOST = "0.0.0.0"`
-  in `config.py` (or run nginx on the same host as klipper-mcp and keep the bind local).
+- `502` → nginx can't reach klipper-mcp; check forward host/port.
+- `401` → header injection failed; check the `proxy_set_header` line for typos/quotes/semicolon.
+- `Connection refused` → klipper-mcp bound to `127.0.0.1`; set `MCP_HOST = "0.0.0.0"` or run nginx on the same host.
 
-### A note on trust boundary
+**Trust boundary:** injecting the key at the proxy shifts auth from "anyone with the key" to "anyone who can reach the vhost" — an improvement on a LAN. If the hostname is publicly resolvable, layer on an `allow`/`deny` block, Cloudflare Access, Tailscale, or Basic auth. Decide before it goes live.
 
-Injecting the API key at the proxy shifts authentication from "anyone with the key"
-to "anyone who can reach the nginx vhost." On a LAN that's an improvement. If the
-hostname is publicly resolvable, layer something on top: an `allow`/`deny` block for
-your LAN range, Cloudflare Access, Tailscale, or HTTP Basic auth in front of the
-location. Decide before the hostname goes live, not after.
+## MCP Clients
 
----
-
-## Setting Up MCP Clients
-
-The examples below use `https://printer.example.com/mcp` as the endpoint — that's
-the URL of your reverse proxy from the previous section. If you skipped the proxy
-and are connecting directly to the MCP server, swap in `http://<pi-ip>:8000/mcp`
-and add the `X-API-Key` header in the spots noted.
+Examples use `https://printer.example.com/mcp` (your reverse proxy). Connecting directly? Swap in `http://<pi-ip>:8000/mcp` and add the `X-API-Key` header where noted.
 
 ### VS Code (Copilot)
 
-Add to your VS Code `settings.json` (`Ctrl+Shift+P` → "Preferences: Open User Settings (JSON)"):
+Add to `settings.json` (`Ctrl+Shift+P` → "Preferences: Open User Settings (JSON)"), or `.vscode/mcp.json` for per-workspace:
 
 ```json
 {
   "mcp": {
     "servers": {
-      "voron": {
-        "type": "http",
-        "url": "https://printer.example.com/mcp"
-      }
+      "voron": { "type": "http", "url": "https://printer.example.com/mcp" }
     }
   }
 }
 ```
 
-If you're connecting *without* a reverse proxy, add an explicit header:
-
-```json
-{
-  "mcp": {
-    "servers": {
-      "voron": {
-        "type": "http",
-        "url": "http://192.168.x.x:8000/mcp",
-        "headers": { "X-API-Key": "your-api-key-here" }
-      }
-    }
-  }
-}
-```
-
-Prefer per-workspace config? Drop the same `mcpServers` block into `.vscode/mcp.json`.
-
-You can register multiple printers by adding more named servers:
-
-```json
-{
-  "mcp": {
-    "servers": {
-      "voron-2.4": { "type": "http", "url": "https://voron-24.example.com/mcp" },
-      "voron-0.2": { "type": "http", "url": "https://voron-02.example.com/mcp" }
-    }
-  }
-}
-```
-
-In the Copilot Chat panel, address the printer by name: `@voron what's your status?`.
+Without a proxy, add `"headers": { "X-API-Key": "your-api-key-here" }`. Register multiple printers as additional named servers, then address by name in Copilot Chat: `@voron what's your status?`.
 
 ### Claude Desktop
 
-**Important:** Claude Desktop's "Add custom connector" UI only accepts OAuth 2.1 +
-PKCE authentication (Dynamic Client Registration, Client ID Metadata Document, or
-Anthropic-held credentials). klipper-mcp uses a static `X-API-Key` header instead,
-so adding it through that UI will fail with a "Couldn't register with [name]'s
-sign-in service" error.
+The "Add custom connector" UI only accepts OAuth 2.1 + PKCE; klipper-mcp uses a static `X-API-Key`, so that UI fails with a sign-in error. Workaround: [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) as a **stdio shim** (Claude Desktop trusts local subprocesses without OAuth).
 
-The workaround is to use [`mcp-remote`](https://www.npmjs.com/package/mcp-remote)
-as a **stdio shim**. It runs locally on your machine, presents itself to Claude
-Desktop as a regular stdio MCP server (which Claude Desktop trusts without
-OAuth, the same way it trusts any local subprocess), and proxies to the remote
-HTTPS endpoint.
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or
-`%APPDATA%\Claude\claude_desktop_config.json` (Windows). Create it if it doesn't
-exist. Add (merging with anything already there):
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows), creating it if needed:
 
 ```json
 {
   "mcpServers": {
     "voron": {
       "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "https://printer.example.com/mcp"
-      ]
+      "args": ["-y", "mcp-remote", "https://printer.example.com/mcp"]
     }
   }
 }
 ```
 
-If you're connecting *without* a reverse proxy and need to send the key client-side,
-use mcp-remote's `--header` flag (the `${VAR}` form works around a Claude Desktop
-quoting bug):
+Without a proxy, pass the key with `--header` (the `${VAR}` form dodges a Claude Desktop quoting bug):
 
 ```json
 {
   "mcpServers": {
     "voron": {
       "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote",
-        "http://192.168.x.x:8000/mcp",
-        "--header", "X-API-Key:${API_KEY}"
-      ],
+      "args": ["-y", "mcp-remote", "http://192.168.x.x:8000/mcp", "--header", "X-API-Key:${API_KEY}"],
       "env": { "API_KEY": "your-api-key-here" }
     }
   }
 }
 ```
 
-**Restart Claude Desktop completely** (⌘Q on macOS, not just reload) — stdio MCPs
-are spawned at app launch. First invocation will install `mcp-remote` via `npx`
-and may take 10–20 seconds. Requires Node.js installed (`brew install node` on
-macOS, or your platform's equivalent).
-
-Debug logs land in `~/.mcp-auth/<server_hash>_debug.log` if something goes wrong.
+**Restart Claude Desktop completely** (⌘Q, not reload) — stdio MCPs spawn at launch. First run installs `mcp-remote` via `npx` (10–20s) and needs Node.js (`brew install node`). Debug logs: `~/.mcp-auth/<server_hash>_debug.log`.
 
 ### Claude Code
 
-Claude Code natively supports HTTP MCP servers with custom headers, no shim needed.
+Native HTTP MCP support with custom headers, no shim:
 
 ```bash
-# With reverse proxy (recommended)
+# With reverse proxy
 claude mcp add --transport http voron https://printer.example.com/mcp
 
-# Without reverse proxy — pass the key as a header
+# Without — pass the key as a header
 claude mcp add --transport http voron http://192.168.x.x:8000/mcp \
   --header "X-API-Key: your-api-key-here"
 ```
 
-This writes the server into your Claude Code config. Confirm with:
+Confirm with `claude mcp list`, then start a new session.
 
-```bash
-claude mcp list
-```
+### Smoke test
 
-Then start a new Claude Code session and the `voron` tools will be available.
+Ask any client: *"What's the voron's printer status?"* A working setup returns temps, position, homed axes, and the last job. If not:
 
-### Verify the Connection
-
-Whatever client you're using, the smoke test is the same — ask for printer status:
-
-> "What's the voron's printer status?"
-
-A working setup returns current temperatures, position, homed axes, and the last
-print job. If the tools aren't available, check:
-
-- The Pi's address is reachable: `ping <pi-host>` from the client machine
-- The reverse proxy responds: `curl -v https://printer.example.com/health`
-- The MCP server is up: `sudo systemctl status klipper-mcp` on the Pi
-- Firewall allows the relevant port (8000 if direct, 443 if proxied)
-- API key matches in `config.py` and (if used) the client config
-
----
+- Pi reachable: `ping <pi-host>`
+- Proxy responds: `curl -v https://printer.example.com/health`
+- Server up: `sudo systemctl status klipper-mcp`
+- Firewall allows the port (8000 direct, 443 proxied)
+- API key matches in `config.py` / client config
 
 ## Security
 
-### ARMED Flag
+| Gate | What it does |
+| ---- | ------------ |
+| **`API_KEY`** | Every request must send a matching `X-API-Key` header. |
+| **`ARMED`** | `True` required for dangerous ops (G-code, temp changes). |
+| **`READ_ONLY`** | `True` **unregisters every write tool at startup** — they can't be called regardless of `ARMED`/`ADMIN_PIN`. Overrides `ARMED`. |
+| **`ADMIN_PIN`** | Required for destructive ops (file delete, config restore, reboot). |
+| **Audit log** | All operations logged to `data/audit.log`. |
 
-Dangerous operations (G-code execution, temperature changes) require `ARMED=True` in config.
+`READ_ONLY=True` keeps every read/analysis tool (status, temps, logs, mesh, history, snapshots, diagnostics) and blocks all writes: motion/print control, temp changes, file writes/deletes, system changes, hardware tuning, notifications, Spoolman/timelapse changes. The startup log and status page (`/`) show registered vs. blocked counts.
 
-### READ_ONLY Mode
+> **Adding a tool?** If it changes state, mark it `@mcp.tool(write=True)` so `READ_ONLY` excludes it. Read-only tools use `@mcp.tool()`.
 
-For a hard guarantee that an AI agent can observe but never change anything, set
-`READ_ONLY=True`. Every mutating tool is **unregistered at startup** — it does not
-exist, so it cannot be called regardless of `ARMED` or `ADMIN_PIN`. This is a
-server-side guarantee, not a per-call check that could be bypassed.
+## Usage
 
-When `READ_ONLY=True`, all read/analysis tools stay available (status, temps,
-logs, mesh, history, snapshots, config inspection, diagnostics) while everything
-that writes is blocked, including:
-
-- Motion & print control (`run_gcode`, `home_printer`, `start_print`, `emergency_stop`, toolchanger moves)
-- Temperature/heater changes (`set_temperature`, `set_tool_temperature`)
-- File writes/deletes (`write_file`, `delete_file`, `restore_config`, `clear_old_logs`)
-- System changes (`update_component`, `restart_service`, `reboot_system`, `shutdown_system`)
-- Hardware tuning (`set_tmc_current`, `set_tmc_field`, bed-mesh save/clear, LED changes)
-- External side-effects (notifications, TTS, console messages, Spoolman/timelapse changes)
-
-`READ_ONLY` overrides `ARMED` for write operations. The startup log and the status
-page (`/`) show how many tools were registered vs. blocked.
-
-> **Adding a new tool?** If it changes any state, mark its decorator
-> `@mcp.tool(write=True)` so `READ_ONLY` excludes it. Read-only tools use `@mcp.tool()`.
-
-### Admin PIN
-
-Destructive operations (file deletion, config restore, system reboot) require the admin PIN.
-
-### API Key
-
-All requests must include a valid `X-API-Key` header matching your config.
-
-### Audit Log
-
-All operations are logged to `data/audit.log` for security review.
-
-## Configuration Reference
-
-```python
-# config.py
-
-# Moonraker connection
-MOONRAKER_URL = "http://localhost:7125"
-PRINTER_NAME = "Voron"
-
-# MCP Server
-MCP_HOST = "0.0.0.0"
-MCP_PORT = 8000
-MCP_TRANSPORT = "http"  # or "stdio" for local use
-
-# Security
-API_KEY = "your-secret-key"        # Required for all API calls
-ARMED = False                       # Set True to enable dangerous ops
-READ_ONLY = False                   # Set True to block ALL mutating tools
-ADMIN_PIN = "1234"                  # For destructive operations
-
-# Camera
-CAMERA_SNAPSHOT_URL = "http://localhost/webcam/?action=snapshot"
-CAMERA_STREAM_URL = "http://localhost/webcam/?action=stream"
-
-# Spoolman (optional)
-SPOOLMAN_ENABLED = True
-SPOOLMAN_URL = "http://localhost:7912"
-
-# Notifications (optional)
-DISCORD_WEBHOOK_URL = ""
-SLACK_WEBHOOK_URL = ""
-PUSHOVER_USER_KEY = ""
-PUSHOVER_API_TOKEN = ""
-
-# Text-to-Speech (optional)
-TTS_ENABLED = False
-TTS_RATE = 150
-TTS_VOLUME = 1.0
-
-# Maintenance intervals (print hours)
-MAINTENANCE_INTERVALS = {
-    "nozzle": 200,
-    "belts": 500,
-    "linear_rails": 1000,
-    "filters": 100
-}
-
-# StealthChanger / Toolchanger
-TOOL_COUNT = 4  # Number of tools (T0-T3)
-```
-
-## Usage Examples
-
-### Basic Commands
+Talk to the printer in natural language. Examples:
 
 ```text
 "What's my printer's current status?"
 "Set the bed to 60°C and hotend to 210°C"
 "Start printing benchy.gcode"
 "Pick up T1" / "Drop the current tool"
+"Audit my Voron's configuration"
+"Analyze my temperature data for anomalies"
+"Show print statistics and filament usage by material"
+"Backup my config, then check for Klipper updates"
+"Bulk import filaments into Spoolman from the community database"
 ```
 
----
-
-### 🧵 Bulk Import Filament Database into Spoolman
-
-**User:** "I want to bulk import filaments into Spoolman from the community database"
-
-**Claude:** I'll fetch the external filament database and import everything for you...
-
-**Result:**
-
-- Fetched 6,957 filaments from SpoolmanDB community database
-- Created 53 vendors (Polymaker, eSun, Bambu Lab, Prusament, Hatchbox, etc.)
-- Imported 5,223 filaments with full specifications:
-  - Material types: PLA (2,466), PETG (943), ASA (526), ABS (467), TPU (312)...
-  - Includes density, diameters, temp ranges, colors
-- All searchable in Spoolman UI
-
----
-
-### 🔍 System Health Check After Heavy Operation
-
-**User:** "How is the Voron's load now that Spoolman has all that data?"
-
-**Claude:** Let me check the system status...
-
-```text
-┌──────────────────────────────────────┐
-│ System Load After Spoolman Import    │
-├─────────────┬────────────┬───────────┤
-│ CPU Load    │ 1.32       │ 🟢 Normal │
-│ Memory      │ 60% used   │ 🟢 OK     │
-│ Disk        │ 38% used   │ 🟢 OK     │
-│ CPU Temp    │ 45.7°C     │ 🟢 Cool   │
-│ CAN Bus     │ All Active │ 🟢 OK     │
-└─────────────┴────────────┴───────────┘
-```
-
-**Analysis:** Spoolman runs on a separate machine, so the 5,223 filaments don't impact Klipper. Load settled from 1.71 → 1.32 after initial indexing.
-
----
-
-### 🛠️ Configuration Audit & Diagnostics
-
-**User:** "Can you audit my Voron's configuration?"
-
-**Claude:** I'll analyze your printer configuration and logs...
-
-**Results:**
-
-```text
-Configuration Issues Found:
-⚠️  Klipper git state: dirty/invalid - uncommitted changes
-⚠️  TMC Autotune: Installed but not configured for all steppers
-⚠️  Hold current: Using default 50% - consider optimizing
-
-Recommendations:
-1. Run 'git stash' in Klipper directory to clean state
-2. Add [autotune_tmc] sections for stepper_x, stepper_y, stepper_z
-3. Set hold_current to 40% for lower idle power consumption
-
-No Critical Errors Found ✅
-CAN Bus: All 4 MCUs communicating properly
-TMC Drivers: No errors, all steppers responding
-```
-
----
-
-### 🌡️ Temperature Anomaly Detection
-
-**User:** "Analyze my temperature data for any issues"
-
-**Claude:** Analyzing temperature history...
-
-```text
-Temperature Analysis (Last 24 Hours)
-────────────────────────────────────
-Hotend (extruder):
-  ✅ Stable PID tuning - variance: ±0.3°C
-  ✅ No thermal runaway events
-  
-Bed (heater_bed):
-  ⚠️ Detected 2 oscillations during warmup
-  💡 Consider re-running PID_CALIBRATE BED
-
-Chamber:
-  ✅ Consistent 45°C during ABS prints
-  
-MCU Temperatures:
-  ✅ All MCUs under 50°C
-```
-
----
-
-### 🔧 TMC Driver Optimization
-
-**User:** "What are my TMC driver settings and can they be improved?"
-
-**Claude:** Let me check your TMC configuration...
-
-```text
-TMC Driver Status
-─────────────────────────────────────────────────
-Stepper      │ Driver   │ Run    │ Hold   │ Temp
-─────────────┼──────────┼────────┼────────┼──────
-stepper_x    │ TMC2209  │ 0.800A │ 0.400A │ 42°C
-stepper_y    │ TMC2209  │ 0.800A │ 0.400A │ 44°C
-stepper_z    │ TMC2209  │ 0.800A │ 0.600A │ 38°C
-stepper_z1   │ TMC2209  │ 0.800A │ 0.600A │ 39°C
-stepper_z2   │ TMC2209  │ 0.800A │ 0.600A │ 37°C
-stepper_z3   │ TMC2209  │ 0.800A │ 0.600A │ 38°C
-extruder     │ TMC2209  │ 0.650A │ 0.325A │ 41°C
-
-TMC Autotune: ⚠️ Installed but needs motor configuration
-Recommendation: Add motor specs to enable automatic tuning
-```
-
----
-
-### 📊 Print Statistics & Filament Usage
-
-**User:** "Show me my print statistics and filament usage"
-
-**Claude:** Here's your printing summary...
-
-```text
-Lifetime Statistics
-───────────────────
-Total Prints:     847
-Success Rate:     94.2%
-Total Print Time: 1,247 hours
-Total Filament:   12.4 kg
-
-Filament by Material
-────────────────────
-PLA   │ ████████████████████ │ 6.2 kg (50%)
-PETG  │ ████████████         │ 3.1 kg (25%)
-ABS   │ ████████             │ 2.0 kg (16%)
-ASA   │ ████                 │ 1.1 kg (9%)
-
-Recent Prints (Last 7 Days)
-───────────────────────────
-✅ voron_panel_x4.gcode    │ 4h 23m │ PETG
-✅ cable_chain.gcode       │ 2h 15m │ ABS
-✅ benchy.gcode            │ 0h 42m │ PLA
-❌ large_vase.gcode        │ Failed │ Layer shift @ 45%
-```
-
----
-
-### 🔄 Multi-Tool Print Setup
-
-**User:** "I want to print a dual-color model, help me set up the tools"
-
-**Claude:** Let me configure your toolchanger...
-
-```text
-Current Tool Status
-───────────────────
-T0 (extruder):  🔵 Active - Docked
-T1 (extruder1): ⚪ Ready - Docked  
-T2 (extruder2): ⚪ Ready - Docked
-
-Setting up for dual-color print:
-1. ✅ Set T0 active spool: Polymaker PLA Pro - Blue (ID: 142)
-2. ✅ Set T1 active spool: Polymaker PLA Pro - White (ID: 156)
-3. ✅ Verified tool offsets are calibrated
-4. ✅ Both hotends at target temp (210°C)
-
-Ready to print! The slicer should handle tool changes automatically.
-```
-
----
-
-### 💾 Automated Backup Before Update
-
-**User:** "I want to update Klipper but backup my config first"
-
-**Claude:** I'll create a backup and then check for updates...
-
-```text
-Backup Created
-──────────────
-📁 backup_2026-01-26_143022.tar.gz
-   - printer.cfg
-   - moonraker.conf
-   - mainsail.cfg
-   - 12 include files
-   Total: 847 KB
-
-Available Updates
-─────────────────
-Component    │ Current     │ Available   │ Status
-─────────────┼─────────────┼─────────────┼────────
-Klipper      │ v0.12.0-145 │ v0.12.0-152 │ 7 commits behind
-Moonraker    │ v0.8.0-401  │ v0.8.0-401  │ ✅ Up to date
-Mainsail     │ v2.9.1      │ v2.10.0     │ Update available
-
-Would you like me to proceed with updating Klipper?
-```
+The agent chains the relevant tools and reports back with temps, diagnostics, tables, or recommendations as appropriate.
 
 ## Optional Integrations
 
-### Spoolman
-
-Enable filament tracking by setting up [Spoolman](https://github.com/Donkie/Spoolman):
+**Spoolman** — filament tracking ([Spoolman](https://github.com/Donkie/Spoolman)):
 
 ```bash
-cd ~/klipper-mcp/scripts
-chmod +x install_spoolman.sh
-./install_spoolman.sh
+cd ~/klipper-mcp/scripts && chmod +x install_spoolman.sh && ./install_spoolman.sh
+# then set SPOOLMAN_ENABLED=True and SPOOLMAN_URL in config
 ```
 
-Then update `config.py`:
+**TMC Autotune** — automatic TMC tuning: [klipper_tmc_autotune](https://github.com/andrewmcgr/klipper_tmc_autotune).
 
-```python
-SPOOLMAN_ENABLED = True
-SPOOLMAN_URL = "http://localhost:7912"
-```
-
-### TMC Autotune
-
-For automatic TMC tuning, install [klipper_tmc_autotune](https://github.com/andrewmcgr/klipper_tmc_autotune).
-
-### LED Effects
-
-For animated LEDs, install [klipper-led_effect](https://github.com/julianschill/klipper-led_effect).
+**LED Effects** — animated LEDs: [klipper-led_effect](https://github.com/julianschill/klipper-led_effect).
 
 ## Troubleshooting
 
-### Server won't start
-
+**Server won't start**
 ```bash
-# Check Moonraker is running
-systemctl status moonraker
-
-# Check logs
-journalctl -u klipper-mcp -f
-
-# Verify config
-python3 -c "import config; print(config.MOONRAKER_URL)"
+systemctl status moonraker            # is Moonraker running?
+journalctl -u klipper-mcp -f          # check logs
+python3 -c "import config; print(config.MOONRAKER_URL)"   # verify config
 ```
 
-### Can't connect from VS Code
+**Can't connect from a client** — verify Pi IP, open port 8000 (`sudo ufw allow 8000`), confirm API key matches, test `curl -H "X-API-Key: your-key" http://ip:8000/health`.
 
-- Verify CB1/Pi IP address is correct
-- Check firewall allows port 8000: `sudo ufw allow 8000`
-- Verify API key matches in VS Code and config.py
-- Test: `curl -H "X-API-Key: your-key" http://ip:8000/health`
+**Operations failing** — check `ARMED=True`, confirm Klipper is ready (`systemctl status klipper`), tail `~/printer_data/logs/klippy.log`.
 
-### Operations failing
-
-- Check `ARMED=True` for dangerous operations
-- Verify Klipper is running and ready: `systemctl status klipper`
-- Check klippy.log: `tail -f ~/printer_data/logs/klippy.log`
-
-### Spoolman not working
-
-- Verify Spoolman is running: `systemctl status spoolman`
-- Check URL in config.py matches Spoolman's address
-- Test: `curl http://localhost:7912/api/v1/health`
+**Spoolman not working** — `systemctl status spoolman`, confirm `SPOOLMAN_URL`, test `curl http://localhost:7912/api/v1/health`.
 
 ## Project Structure
 
 ```text
 klipper-mcp/
-├── server.py           # Main MCP server
-├── moonraker.py        # Moonraker API client
-├── config.py           # Configuration
-├── requirements.txt    # Python dependencies
-├── install.sh          # Installation script
-├── klipper-mcp.service # Systemd service file
-├── tools/              # MCP tool implementations
-│   ├── printer.py      # Core printer control
-│   ├── toolchanger.py  # Toolchanger/StealthChanger
-│   ├── tmc.py          # TMC driver control
-│   ├── led_effects.py  # LED animations
-│   ├── filesystem.py   # File operations
-│   ├── camera.py       # Camera & timelapse
-│   ├── statistics.py   # Print history
-│   ├── diagnostics.py  # Error analysis
-│   ├── temperature.py  # Temp control & mesh
-│   ├── spoolman.py     # Filament tracking
-│   ├── notifications.py# Alerts & TTS
-│   ├── backup.py       # Backup & maintenance
-│   ├── gcode_analysis.py # G-code parsing
-│   └── system.py       # System management
-├── data/               # Runtime data
-│   ├── audit.log       # Security log
-│   └── maintenance.json# Maintenance records
-├── backups/            # Config backups
-├── scenes/             # LED scene presets
-│   └── led_scenes.json
-└── docs/               # Documentation
+├── server.py            # Main MCP server
+├── moonraker.py         # Moonraker API client
+├── config.py            # Configuration
+├── install.sh           # Installer
+├── klipper-mcp.service  # Systemd unit
+├── tools/               # Tool implementations (printer, toolchanger, tmc,
+│                        #   led_effects, filesystem, camera, statistics,
+│                        #   diagnostics, temperature, spoolman, notifications,
+│                        #   backup, gcode_analysis, system)
+├── data/                # Runtime: audit.log, maintenance.json
+├── backups/             # Config backups
+├── scenes/              # LED scene presets
+└── docs/                # Documentation
 ```
 
 ## Contributing
 
-Contributions welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests if applicable
-4. Submit a pull request
+Fork, branch, add tests if applicable, open a PR.
 
 ## License
 
-MIT License - See LICENSE file for details.
+MIT — see LICENSE.
 
 ## Acknowledgments
 
-- [Klipper](https://www.klipper3d.org/) - 3D printer firmware
-- [Moonraker](https://moonraker.readthedocs.io/) - Klipper API server
-- [Model Context Protocol](https://modelcontextprotocol.io/) - AI tool protocol
-- [StealthChanger](https://github.com/DraftShift/StealthChanger) - Toolchanger system
-- [Spoolman](https://github.com/Donkie/Spoolman) - Filament management
+[Klipper](https://www.klipper3d.org/) · [Moonraker](https://moonraker.readthedocs.io/) · [Model Context Protocol](https://modelcontextprotocol.io/) · [StealthChanger](https://github.com/DraftShift/StealthChanger) · [Spoolman](https://github.com/Donkie/Spoolman)
