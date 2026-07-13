@@ -1,0 +1,6 @@
+# Tooling config only — the project installs via requirements.txt, not this file.
+
+[tool.ruff]
+# CB1/Raspberry Pi floor. Keeps ruff from suggesting 3.10+ only syntax.
+target-version = "py39"
+line-length = 100

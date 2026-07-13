@@ -4,7 +4,6 @@ Temperature history, anomaly detection, and bed mesh management
 """
 
 import json
-from typing import Optional, List
 import config
 from moonraker import get_client
 

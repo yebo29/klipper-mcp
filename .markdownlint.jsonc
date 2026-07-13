@@ -1,0 +1,8 @@
+{
+  // Best-practice defaults, with two relaxations for this repo.
+  "default": true,
+  // Prose is not hard-wrapped; line length is not a defect here.
+  "MD013": false,
+  // README uses <details>/<summary>/<b> to collapse the tool catalog.
+  "MD033": false
+}

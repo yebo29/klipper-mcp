@@ -4,7 +4,6 @@ Alerts, webhooks, and text-to-speech announcements
 """
 
 import json
-from typing import Optional
 import aiohttp
 import config
 
@@ -32,13 +31,6 @@ def register_notification_tools(mcp):
             level: Severity level - 'info', 'warning', 'error', 'success'
         """
         results = {}
-
-        payload = {
-            "title": title,
-            "message": message,
-            "level": level,
-            "printer": config.PRINTER_NAME,
-        }
 
         # Discord webhook
         if config.DISCORD_WEBHOOK_URL:
@@ -163,7 +155,7 @@ def register_notification_tools(mcp):
                 engine.setProperty("rate", config.TTS_RATE)
                 engine.say(tts_message)
                 engine.runAndWait()
-            except:
+            except Exception:
                 pass  # TTS failure shouldn't fail the notification
 
         return notification_result

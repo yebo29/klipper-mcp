@@ -5,7 +5,6 @@ Error log parsing, config validation, and troubleshooting
 
 import json
 import re
-from typing import Optional
 import config
 from moonraker import get_client
 
@@ -203,7 +202,7 @@ def register_diagnostics_tools(mcp):
                             {
                                 "line_number": i + 1,
                                 "error": line.strip(),
-                                "context": [l.strip() for l in context],
+                                "context": [ln.strip() for ln in context],
                             }
                         )
 
@@ -718,10 +717,9 @@ def register_diagnostics_tools(mcp):
         Scans klippy.log, moonraker.log for the last hour of activity.
         """
         import os
-        from datetime import datetime, timedelta
+        from datetime import datetime
 
         logs_path = config.LOGS_PATH
-        one_hour_ago = datetime.now() - timedelta(hours=1)
 
         summary = {
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),

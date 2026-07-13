@@ -4,7 +4,6 @@ Basic printer operations: status, temps, G-code, emergency stop
 """
 
 import json
-from typing import Optional
 import config
 from moonraker import get_client
 
