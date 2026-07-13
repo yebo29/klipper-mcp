@@ -5,8 +5,6 @@ Parse and analyze G-code files
 
 import json
 import re
-from typing import Optional
-import config
 from moonraker import get_client
 from ._util import format_duration
 
@@ -295,14 +293,6 @@ def register_gcode_analysis_tools(mcp):
             return json.dumps({"error": str(e)})
 
         lines = content.split("\n")
-
-        # Find layer markers (common patterns)
-        layer_patterns = [
-            rf";LAYER:{layer_number}",  # Cura
-            rf"; layer {layer_number}",  # PrusaSlicer/SuperSlicer
-            rf";LAYER_CHANGE",  # Some slicers
-            rf";Z:{layer_number}",
-        ]
 
         current_layer = 0
         layer_start = None

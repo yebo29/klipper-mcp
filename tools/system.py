@@ -6,7 +6,6 @@ Software updates, service control, system monitoring
 import json
 import os
 import subprocess
-from typing import Optional
 import config
 from moonraker import get_client
 
@@ -54,7 +53,7 @@ def register_system_tools(mcp):
                     "5min": float(load[1]),
                     "15min": float(load[2]),
                 }
-        except:
+        except Exception:
             pass
 
         # Memory info
@@ -71,8 +70,6 @@ def register_system_tools(mcp):
                 total = meminfo.get("MemTotal", 0) / 1024  # MB
                 free = meminfo.get("MemFree", 0) / 1024
                 available = meminfo.get("MemAvailable", 0) / 1024
-                buffers = meminfo.get("Buffers", 0) / 1024
-                cached = meminfo.get("Cached", 0) / 1024
 
                 info["memory"] = {
                     "total_mb": round(total, 1),
@@ -82,7 +79,7 @@ def register_system_tools(mcp):
                         round((total - available) / total * 100, 1) if total > 0 else 0
                     ),
                 }
-        except:
+        except Exception:
             pass
 
         # Disk usage
@@ -98,7 +95,7 @@ def register_system_tools(mcp):
                 "free_gb": round(free, 2),
                 "percent_used": round(used / total * 100, 1) if total > 0 else 0,
             }
-        except:
+        except Exception:
             pass
 
         # Uptime
@@ -112,7 +109,7 @@ def register_system_tools(mcp):
                     "seconds": int(uptime_seconds),
                     "formatted": f"{days}d {hours}h {minutes}m",
                 }
-        except:
+        except Exception:
             pass
 
         # CPU temperature
@@ -120,7 +117,7 @@ def register_system_tools(mcp):
             with open("/sys/class/thermal/thermal_zone0/temp", "r") as f:
                 temp = int(f.read().strip()) / 1000
                 info["cpu_temp_c"] = round(temp, 1)
-        except:
+        except Exception:
             pass
 
         return json.dumps(info, indent=2)
@@ -156,14 +153,14 @@ def register_system_tools(mcp):
                             "ip_addresses": addrs,
                             "state": iface.get("operstate", "unknown"),
                         }
-        except:
+        except Exception:
             # Fallback method
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 s.connect(("8.8.8.8", 80))
                 info["primary_ip"] = s.getsockname()[0]
                 s.close()
-            except:
+            except Exception:
                 pass
 
         # WiFi signal strength (if applicable)
@@ -181,7 +178,7 @@ def register_system_tools(mcp):
                         if match:
                             info["wifi_signal_dbm"] = int(match.group(1))
                         break
-        except:
+        except Exception:
             pass
 
         return json.dumps(info, indent=2)

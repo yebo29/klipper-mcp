@@ -550,18 +550,25 @@ cd ~/klipper-mcp/scripts && chmod +x install_spoolman.sh && ./install_spoolman.s
 
 ## Troubleshooting
 
-**Server won't start**
+### Server won't start
+
 ```bash
 systemctl status moonraker            # is Moonraker running?
 journalctl -u klipper-mcp -f          # check logs
 python3 -c "import config; print(config.MOONRAKER_URL)"   # verify config
 ```
 
-**Can't connect from a client** — verify Pi IP, open port 8000 (`sudo ufw allow 8000`), confirm API key matches, test `curl -H "X-API-Key: your-key" http://ip:8000/health`.
+### Can't connect from a client
 
-**Operations failing** — check `ARMED=True`, confirm Klipper is ready (`systemctl status klipper`), tail `~/printer_data/logs/klippy.log`.
+Verify Pi IP, open port 8000 (`sudo ufw allow 8000`), confirm API key matches, test `curl -H "X-API-Key: your-key" http://ip:8000/health`.
 
-**Spoolman not working** — `systemctl status spoolman`, confirm `SPOOLMAN_URL`, test `curl http://localhost:7912/api/v1/health`.
+### Operations failing
+
+Check `ARMED=True`, confirm Klipper is ready (`systemctl status klipper`), tail `~/printer_data/logs/klippy.log`.
+
+### Spoolman not working
+
+`systemctl status spoolman`, confirm `SPOOLMAN_URL`, test `curl http://localhost:7912/api/v1/health`.
 
 ## Project Structure
 

@@ -69,6 +69,7 @@ echo "Checking Python version..."
 if python3 -c 'import sys, venv; sys.exit(0 if sys.version_info >= (3, 9) else 1)' 2>/dev/null; then
     echo "System python3 ($(python3 -V 2>&1)) is new enough and has the venv module."
     python3 -m venv .venv
+    # shellcheck source=/dev/null  # activate is generated at install time
     source .venv/bin/activate
     pip install --upgrade pip
     pip install -e .
@@ -98,6 +99,7 @@ else
     # Download a standalone CPython and build the venv from it
     uv python install "${PYTHON_VERSION}"
     uv venv --python "${PYTHON_VERSION}" .venv
+    # shellcheck source=/dev/null  # activate is generated at install time
     source .venv/bin/activate
     uv pip install -e .
 fi

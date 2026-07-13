@@ -21,7 +21,7 @@ def register_backup_tools(mcp):
             try:
                 with open(config.MAINTENANCE_LOG_PATH, "r") as f:
                     return json.load(f)
-            except:
+            except Exception:
                 pass
         return {
             "printer": config.PRINTER_NAME,
@@ -335,7 +335,7 @@ def register_backup_tools(mcp):
             try:
                 entry = json.loads(line.strip())
                 entries.append(entry)
-            except:
+            except Exception:
                 entries.append({"raw": line.strip()})
 
         return json.dumps(

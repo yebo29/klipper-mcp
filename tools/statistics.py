@@ -5,7 +5,6 @@ Print history, totals, and analytics
 
 import json
 from typing import Optional
-import config
 from moonraker import get_client
 from ._util import format_duration
 

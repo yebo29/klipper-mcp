@@ -67,6 +67,7 @@ python3 -m venv "$VENV_DIR"
 
 # Activate venv and install dependencies
 echo "Installing dependencies..."
+# shellcheck source=/dev/null  # activate is generated at install time
 source "$VENV_DIR/bin/activate"
 pip install --upgrade pip
 pip install -r "$INSTALL_DIR/requirements.txt"

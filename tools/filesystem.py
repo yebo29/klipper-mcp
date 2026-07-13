@@ -4,8 +4,6 @@ Read, write, list, upload, and delete files on the printer
 """
 
 import json
-import os
-from typing import Optional
 import config
 from moonraker import get_client
 from ._util import format_duration
@@ -201,7 +199,7 @@ def register_filesystem_tools(mcp):
 
             async with session.post(url, data=data) as response:
                 response.raise_for_status()
-                result = await response.json()
+                await response.json()
 
                 return json.dumps(
                     {

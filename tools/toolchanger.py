@@ -304,8 +304,6 @@ def register_toolchanger_tools(mcp):
         if target < 0 or target > 350:
             return json.dumps({"error": f"Invalid temperature {target}"})
 
-        heater = "extruder" if tool_number == 0 else f"extruder{tool_number}"
-
         client = get_client()
         result = await client.run_gcode(f"M104 T{tool_number} S{target}")
 

@@ -4,8 +4,7 @@ Status monitoring, current control, register access, and autotune support
 """
 
 import json
-from typing import Optional, List
-import config
+from typing import Optional
 from moonraker import get_client
 
 
